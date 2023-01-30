@@ -17,11 +17,15 @@ limitations under the License.
 package novaconductor
 
 import (
+	"fmt"
+
 	novav1 "github.com/openstack-k8s-operators/nova-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/nova-operator/pkg/nova"
 
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/annotations"
 	env "github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,7 +41,7 @@ const (
 func CellDBSyncJob(
 	instance *novav1.NovaConductor,
 	labels map[string]string,
-) *batchv1.Job {
+) (*batchv1.Job, error) {
 
 	initContainerDetails := ContainerInput{
 		ContainerImage:       instance.Spec.ContainerImage,
@@ -112,5 +116,13 @@ func CellDBSyncJob(
 		},
 	}
 
-	return job
+	// networks to attach to
+	nwAnnotation, err := annotations.GetNADAnnotation(instance.Namespace, instance.Spec.NetworkAttachments)
+	if err != nil {
+		return nil, fmt.Errorf("failed create network annotation from %s: %w",
+			instance.Spec.NetworkAttachments, err)
+	}
+	job.Spec.Template.Annotations = util.MergeStringMaps(job.Spec.Template.Annotations, nwAnnotation)
+
+	return job, nil
 }

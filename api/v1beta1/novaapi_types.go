@@ -63,6 +63,14 @@ type NovaAPITemplate struct {
 	// Resources - Compute Resources required by this service (Limits/Requests).
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Networks list of NetworkAttachment to expose the services to
+	NetworkAttachments []string `json:"networkAttachments"`
+
+	// +kubebuilder:validation:Optional
+	// IPAddressPool if set, expose VIP via MetalLB on the address pool
+	VIP []MetalLBConfig `json:"vip"`
 }
 
 // NovaAPISpec defines the desired state of NovaAPI
@@ -144,10 +152,16 @@ type NovaAPIStatus struct {
 
 	// ReadyCount defines the number of replicas ready from nova-api
 	ReadyCount int32 `json:"readyCount,omitempty"`
+
+	// Networks in addtion to the cluster network, the service is attached to
+	Networks []string `json:"networks,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Networks",type="string",JSONPath=".status.networks",description="Networks"
+//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[0].status",description="Status"
+//+kubebuilder:printcolumn:name="Message",type="string",JSONPath=".status.conditions[0].message",description="Message"
 
 // NovaAPI is the Schema for the novaapis API
 type NovaAPI struct {

@@ -17,9 +17,13 @@ limitations under the License.
 package novaapi
 
 import (
+	"fmt"
+
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
 	affinity "github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/annotations"
 	env "github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	novav1 "github.com/openstack-k8s-operators/nova-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/nova-operator/pkg/nova"
 
@@ -34,7 +38,7 @@ func StatefulSet(
 	instance *novav1.NovaAPI,
 	configHash string,
 	labels map[string]string,
-) *appsv1.StatefulSet {
+) (*appsv1.StatefulSet, error) {
 	runAsUser := int64(0)
 
 	// This allows the pod to start up slowly. The pod will only be killed
@@ -175,5 +179,13 @@ func StatefulSet(
 		},
 	}
 
-	return statefulset
+	// networks to attach to
+	nwAnnotation, err := annotations.GetNADAnnotation(instance.Namespace, instance.Spec.NetworkAttachments)
+	if err != nil {
+		return nil, fmt.Errorf("failed create network annotation from %s: %w",
+			instance.Spec.NetworkAttachments, err)
+	}
+	statefulset.Spec.Template.Annotations = util.MergeStringMaps(statefulset.Spec.Template.Annotations, nwAnnotation)
+
+	return statefulset, nil
 }

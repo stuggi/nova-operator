@@ -59,6 +59,15 @@ type NovaSchedulerTemplate struct {
 	// Resources - Compute Resources required by this service (Limits/Requests).
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Networks list of NetworkAttachment to expose the services to
+	NetworkAttachments []string `json:"networkAttachments"`
+
+	// +kubebuilder:validation:Optional
+	// IPAddressPool if set, expose VIP via MetalLB on the address pool
+	// TODO (mschuppert) the scheduler won't have a vip, just for testing to can convert the NovaServiceBase
+	VIP []MetalLBConfig `json:"vip"`
 }
 
 // NovaSchedulerSpec defines the desired state of NovaScheduler
@@ -135,6 +144,9 @@ type NovaSchedulerStatus struct {
 
 	// ReadyCount defines the number of replicas ready from nova-scheduler
 	ReadyCount int32 `json:"readyCount,omitempty"`
+
+	// Networks in addtion to the cluster network, the service is attached to
+	Networks []string `json:"networks,omitempty"`
 }
 
 //+kubebuilder:object:root=true

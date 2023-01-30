@@ -365,7 +365,11 @@ func (r *NovaAPIReconciler) ensureDeployment(
 	instance *novav1.NovaAPI,
 	inputHash string,
 ) (ctrl.Result, error) {
-	ss := statefulset.NewStatefulSet(novaapi.StatefulSet(instance, inputHash, getServiceLabels()), 1)
+	ssDef, err := novaapi.StatefulSet(instance, inputHash, getServiceLabels())
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	ss := statefulset.NewStatefulSet(ssDef, 1)
 	ss.SetTimeout(r.RequeueTimeout)
 	ctrlResult, err := ss.CreateOrPatch(ctx, h)
 	if err != nil && !k8s_errors.IsNotFound(err) {
@@ -388,6 +392,7 @@ func (r *NovaAPIReconciler) ensureDeployment(
 		return ctrlResult, nil
 	}
 
+	instance.Status.Networks = instance.Spec.NetworkAttachments
 	instance.Status.ReadyCount = ss.GetStatefulSet().Status.ReadyReplicas
 	if instance.Status.ReadyCount > 0 {
 		util.LogForObject(h, "Deployment is ready", instance)
@@ -411,9 +416,21 @@ func (r *NovaAPIReconciler) ensureServiceExposed(
 	instance *novav1.NovaAPI,
 ) (ctrl.Result, error) {
 	var ports = map[endpoint.Endpoint]endpoint.Data{
-		endpoint.EndpointAdmin:    {Port: novaapi.APIServicePort},
 		endpoint.EndpointPublic:   {Port: novaapi.APIServicePort},
 		endpoint.EndpointInternal: {Port: novaapi.APIServicePort},
+	}
+
+	for _, metallbcfg := range instance.Spec.VIP {
+		portCfg := ports[metallbcfg.Endpoint]
+
+		portCfg.MetalLB = endpoint.MetalLBData{
+			Create:      true,
+			AddressPool: metallbcfg.IPAddressPool,
+			SharedIP:    metallbcfg.SharedIP,
+			IP:          metallbcfg.IP,
+		}
+
+		ports[metallbcfg.Endpoint] = portCfg
 	}
 
 	apiEndpoints, ctrlResult, err := endpoint.ExposeEndpoints(

@@ -313,7 +313,11 @@ func (r *NovaSchedulerReconciler) ensureDeployment(
 	instance *novav1.NovaScheduler,
 	inputHash string,
 ) (ctrl.Result, error) {
-	ss := statefulset.NewStatefulSet(novascheduler.StatefulSet(instance, inputHash, getServiceLabels()), 1)
+	ssDef, err := novascheduler.StatefulSet(instance, inputHash, getServiceLabels())
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	ss := statefulset.NewStatefulSet(ssDef, 1)
 	ss.SetTimeout(r.RequeueTimeout)
 	ctrlResult, err := ss.CreateOrPatch(ctx, h)
 	if err != nil && !k8s_errors.IsNotFound(err) {
@@ -336,6 +340,7 @@ func (r *NovaSchedulerReconciler) ensureDeployment(
 		return ctrlResult, nil
 	}
 
+	instance.Status.Networks = instance.Spec.NetworkAttachments
 	instance.Status.ReadyCount = ss.GetStatefulSet().Status.ReadyReplicas
 	if instance.Status.ReadyCount > 0 {
 		util.LogForObject(h, "Deployment is ready", instance)

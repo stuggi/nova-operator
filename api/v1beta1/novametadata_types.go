@@ -59,6 +59,10 @@ type NovaMetadataTemplate struct {
 	// Resources - Compute Resources required by this service (Limits/Requests).
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Networks list of NetworkAttachment to expose the services to
+	NetworkAttachments []string `json:"networkAttachments"`
 }
 
 // NovaMetadataSpec defines the desired state of NovaMetadata
@@ -152,6 +156,9 @@ type NovaMetadataStatus struct {
 
 	// ReadyCount defines the number of replicas ready from nova-metadata
 	ReadyCount int32 `json:"readyCount,omitempty"`
+
+	// Networks in addtion to the cluster network, the service is attached to
+	Networks []string `json:"networks,omitempty"`
 }
 
 //+kubebuilder:object:root=true

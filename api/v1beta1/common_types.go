@@ -18,6 +18,8 @@ package v1beta1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 )
 
 // NovaServiceBase contains the fields that are needed for each nova service CRD
@@ -52,6 +54,14 @@ type NovaServiceBase struct {
 	// Resources - Compute Resources required by this service (Limits/Requests).
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Networks list of NetworkAttachment to expose the services to
+	NetworkAttachments []string `json:"networkAttachments"`
+
+	// +kubebuilder:validation:Optional
+	// IPAddressPool if set, expose VIP via MetalLB on the address pool
+	VIP []MetalLBConfig `json:"vip"`
 }
 
 // Debug allows enabling different debug option for the operator
@@ -95,4 +105,24 @@ type PasswordSelector struct {
 	// CellDatabase - the name of the field to get the Cell DB password from
 	// the Secret
 	CellDatabase string `json:"cellDatabase"`
+}
+
+// MetalLBConfig to configure the MetalLB loadbalancer service
+type MetalLBConfig struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=admin;internal;public
+	// Endpoint, OpenStack endpoint this service maps to
+	Endpoint endpoint.Endpoint `json:"endpoint"`
+
+	// IPAddressPool if set, expose VIP via MetalLB on the address pool
+	IPAddressPool string `json:"ipAddressPool"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=true
+	// SharedIP if true, VIP is shared with multiple services
+	SharedIP bool `json:"sharedIP"`
+
+	// +kubebuilder:validation:Optional
+	// IP, request given IP if available
+	IP string `json:"ip"`
 }

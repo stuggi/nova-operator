@@ -310,8 +310,6 @@ github.com/openshift/api v3.9.0+incompatible h1:fJ/KsefYuZAjmrr3+5U9yZIZbTOpVkDD
 github.com/openshift/api v3.9.0+incompatible/go.mod h1:dh9o4Fs58gpFXGSYfnVxGR9PnV53I8TW84pQaJDdGiY=
 github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20221215165910-80274d6445b1 h1:rzLz7ooPDuhhkMtpG8iPsTmtyWO28IKDVnQbYUOywV4=
 github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20221215165910-80274d6445b1/go.mod h1:HfMoeyB6kEPfH6Q5YlLyUwmY5ZIgEsDoIBvArE01Oto=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230110110231-28368fe6a6a9 h1:Z8+r/5O5AfTOzbdrUxSbGxdiSbhluFwDMU/5c9jMkFA=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230110110231-28368fe6a6a9/go.mod h1:qV9OlokZRpqbHI3lmeN5EOmIKynWphw6GPl3zP9KOGM=
 github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20230110110231-28368fe6a6a9 h1:ho8NL1fPXgJEN0/xcykA6SDVme53S+vI+3BD6KWyT+o=
 github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20230110110231-28368fe6a6a9/go.mod h1:rONM/XgvFs6putDIxRHNv9/CTGh2afAvJM5wRP2OywY=
 github.com/openstack-k8s-operators/lib-common/modules/openstack v0.0.0-20220915080953-f73a201a1da6 h1:MVNEHyqD0ZdO9jiyUSKw5M2T9Lc4l4Wx1pdC2/BSJ5Y=
@@ -371,6 +369,8 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.0 h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=
+github.com/stuggi/lib-common/modules/common v0.0.0-20230127115844-0a349dc3b887 h1:kMAxjA90jeeOgdBctY7n36Y1BI/7b7Cbu74THiVefPs=
+github.com/stuggi/lib-common/modules/common v0.0.0-20230127115844-0a349dc3b887/go.mod h1:qV9OlokZRpqbHI3lmeN5EOmIKynWphw6GPl3zP9KOGM=
 github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2zxlSyiKSe5eX1tZViRH5QA0qijqEDrYZiPEAiq3wU=
 github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415/go.mod h1:GwrjFmJcFw6At/Gs6z4yjiIwzuJ1/+UwLxMQDVQXShQ=
 github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQluxsYJ78Id3Y=

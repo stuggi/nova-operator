@@ -326,7 +326,10 @@ func (r *NovaConductorReconciler) ensureCellDBSynced(
 	}
 
 	dbSyncHash := instance.Status.Hash[DbSyncHash]
-	jobDef := novaconductor.CellDBSyncJob(instance, serviceLabels)
+	jobDef, err := novaconductor.CellDBSyncJob(instance, serviceLabels)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	dbSyncJob := job.NewJob(jobDef, "dbsync", instance.Spec.Debug.PreserveJobs, 1, dbSyncHash)
 	dbSyncJob.SetTimeout(r.RequeueTimeout)
 	ctrlResult, err := dbSyncJob.DoJob(ctx, h)
@@ -365,8 +368,11 @@ func (r *NovaConductorReconciler) ensureDeployment(
 	serviceLabels := map[string]string{
 		common.AppSelector: NovaConductorLabelPrefix,
 	}
-
-	ss := statefulset.NewStatefulSet(novaconductor.StatefulSet(instance, inputHash, serviceLabels), 1)
+	ssDef, err := novaconductor.StatefulSet(instance, inputHash, serviceLabels)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	ss := statefulset.NewStatefulSet(ssDef, 1)
 	ss.SetTimeout(r.RequeueTimeout)
 	ctrlResult, err := ss.CreateOrPatch(ctx, h)
 	if err != nil && !k8s_errors.IsNotFound(err) {
@@ -389,6 +395,7 @@ func (r *NovaConductorReconciler) ensureDeployment(
 		return ctrlResult, nil
 	}
 
+	instance.Status.Networks = instance.Spec.NetworkAttachments
 	instance.Status.ReadyCount = ss.GetStatefulSet().Status.ReadyReplicas
 	if instance.Status.ReadyCount > 0 {
 		util.LogForObject(h, "Deployment is ready", instance)

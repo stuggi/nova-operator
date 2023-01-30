@@ -89,6 +89,12 @@ spec:
                       add additional files. Those get added to the service config
                       dir in /etc/<service> .
                     type: object
+                  networkAttachments:
+                    description: Networks list of NetworkAttachment to expose the
+                      services to
+                    items:
+                      type: string
+                    type: array
                   nodeSelector:
                     additionalProperties:
                       type: string
@@ -129,6 +135,38 @@ spec:
                           to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         type: object
                     type: object
+                  vip:
+                    description: IPAddressPool if set, expose VIP via MetalLB on the
+                      address pool TODO (mschuppert) the conductor won't have a vip,
+                      just for testing to can convert the NovaServiceBase
+                    items:
+                      description: MetalLBConfig to configure the MetalLB loadbalancer
+                        service
+                      properties:
+                        endpoint:
+                          description: Endpoint, OpenStack endpoint this service maps
+                            to
+                          enum:
+                          - admin
+                          - internal
+                          - public
+                          type: string
+                        ip:
+                          description: IP, request given IP if available
+                          type: string
+                        ipAddressPool:
+                          description: IPAddressPool if set, expose VIP via MetalLB
+                            on the address pool
+                          type: string
+                        sharedIP:
+                          default: true
+                          description: SharedIP if true, VIP is shared with multiple
+                            services
+                          type: boolean
+                      required:
+                      - ipAddressPool
+                      type: object
+                    type: array
                 type: object
               debug:
                 description: Debug - enable debug for different deploy stages. If
@@ -184,6 +222,12 @@ spec:
                       add additional files. Those get added to the service config
                       dir in /etc/<service> .
                     type: object
+                  networkAttachments:
+                    description: Networks list of NetworkAttachment to expose the
+                      services to
+                    items:
+                      type: string
+                    type: array
                   nodeSelector:
                     additionalProperties:
                       type: string
@@ -248,6 +292,12 @@ spec:
                       add additional files. Those get added to the service config
                       dir in /etc/<service> .
                     type: object
+                  networkAttachments:
+                    description: Networks list of NetworkAttachment to expose the
+                      services to
+                    items:
+                      type: string
+                    type: array
                   nodeSelector:
                     additionalProperties:
                       type: string
@@ -288,6 +338,37 @@ spec:
                           to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         type: object
                     type: object
+                  vip:
+                    description: IPAddressPool if set, expose VIP via MetalLB on the
+                      address pool
+                    items:
+                      description: MetalLBConfig to configure the MetalLB loadbalancer
+                        service
+                      properties:
+                        endpoint:
+                          description: Endpoint, OpenStack endpoint this service maps
+                            to
+                          enum:
+                          - admin
+                          - internal
+                          - public
+                          type: string
+                        ip:
+                          description: IP, request given IP if available
+                          type: string
+                        ipAddressPool:
+                          description: IPAddressPool if set, expose VIP via MetalLB
+                            on the address pool
+                          type: string
+                        sharedIP:
+                          default: true
+                          description: SharedIP if true, VIP is shared with multiple
+                            services
+                          type: boolean
+                      required:
+                      - ipAddressPool
+                      type: object
+                    type: array
                 type: object
               passwordSelectors:
                 default:
