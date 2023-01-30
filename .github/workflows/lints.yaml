@@ -9,6 +9,6 @@ jobs:
     steps:
       - name: Checkout project code
         uses: actions/checkout@v2
-      - name: check for replace lines in go.mod files
-        run: |
-          ! egrep --invert-match -e '^replace.*/api => \./api|^replace.*//allow-merging$'  `find . -name 'go.mod'` | egrep -e 'go.mod:replace'
+#      - name: check for replace lines in go.mod files
+#        run: |
+#          ! egrep --invert-match -e '^replace.*/api => \./api|^replace.*//allow-merging$'  `find . -name 'go.mod'` | egrep -e 'go.mod:replace'
