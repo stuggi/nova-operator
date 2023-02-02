@@ -460,6 +460,17 @@ func (r *NovaAPIReconciler) ensureServiceExposed(
 		endpoint.EndpointInternal: {Port: novaapi.APIServicePort},
 	}
 
+	for _, metallbcfg := range instance.Spec.ExternalEndpoints {
+		portCfg := ports[metallbcfg.Endpoint]
+		portCfg.MetalLB = &endpoint.MetalLBData{
+			IPAddressPool:   metallbcfg.IPAddressPool,
+			SharedIP:        metallbcfg.SharedIP,
+			LoadBalancerIPs: metallbcfg.LoadBalancerIPs,
+		}
+
+		ports[metallbcfg.Endpoint] = portCfg
+	}
+
 	apiEndpoints, ctrlResult, err := endpoint.ExposeEndpoints(
 		ctx,
 		h,
