@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/go-logr/logr v1.2.3
 	github.com/google/uuid v1.3.0
+	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
 	github.com/onsi/ginkgo/v2 v2.8.0
 	github.com/onsi/gomega v1.26.0
 	github.com/openshift/api v3.9.0+incompatible
@@ -81,3 +82,5 @@ require (
 )
 
 replace github.com/openstack-k8s-operators/nova-operator/api => ./api
+
+replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/stuggi/lib-common/modules/common v0.0.0-20230213111010-7458e283a386
