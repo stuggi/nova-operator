@@ -332,7 +332,6 @@ var _ = Describe("NovaAPI controller", func() {
 			)
 			AssertServiceExists(types.NamespacedName{Namespace: namespace, Name: "nova-public"})
 			AssertServiceExists(types.NamespacedName{Namespace: namespace, Name: "nova-internal"})
-			AssertServiceExists(types.NamespacedName{Namespace: namespace, Name: "nova-admin"})
 			AssertRouteExists(types.NamespacedName{Namespace: namespace, Name: "nova-public"})
 		})
 
@@ -345,7 +344,6 @@ var _ = Describe("NovaAPI controller", func() {
 			regexp := `http:.*:?\d*\/v2.1$`
 			Expect(endpoints).To(HaveKeyWithValue("public", MatchRegexp(regexp)))
 			Expect(endpoints).To(HaveKeyWithValue("internal", MatchRegexp(regexp)))
-			Expect(endpoints).To(HaveKeyWithValue("admin", MatchRegexp(regexp)))
 
 			th.ExpectCondition(
 				novaAPIName,
