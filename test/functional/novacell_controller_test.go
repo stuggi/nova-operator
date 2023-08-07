@@ -217,7 +217,6 @@ var _ = Describe("NovaCell controller", func() {
 
 			// make novncproxy ready
 			th.SimulateStatefulSetReplicaReady(cell1.NoVNCProxyStatefulSetName)
-			SimulateNoVNCProxyRouteIngress("cell1", cell1.CellName.Namespace)
 
 			th.ExpectCondition(
 				cell1.CellName,
@@ -265,7 +264,7 @@ var _ = Describe("NovaCell controller", func() {
 			// compute config only generated after VNCProxy is ready,
 			// so make novncproxy ready
 			th.SimulateStatefulSetReplicaReady(cell1.NoVNCProxyStatefulSetName)
-			host := SimulateNoVNCProxyRouteIngress("cell1", cell1.CellName.Namespace)
+			host := SimulateNoVNCProxyService("cell1", cell1.CellName.Namespace)
 			th.ExpectCondition(
 				cell1.CellName,
 				ConditionGetterFunc(NovaCellConditionGetter),
@@ -296,7 +295,6 @@ var _ = Describe("NovaCell controller", func() {
 			th.SimulateJobSuccess(cell1.CellDBSyncJobName)
 			th.SimulateStatefulSetReplicaReady(cell1.ConductorStatefulSetName)
 			th.SimulateStatefulSetReplicaReady(cell1.NoVNCProxyStatefulSetName)
-			SimulateNoVNCProxyRouteIngress("cell1", cell1.CellName.Namespace)
 			th.SimulateStatefulSetReplicaReady(cell1.MetadataStatefulSetName)
 
 			th.ExpectCondition(
@@ -311,7 +309,7 @@ var _ = Describe("NovaCell controller", func() {
 			th.SimulateJobSuccess(cell1.CellDBSyncJobName)
 			th.SimulateStatefulSetReplicaReady(cell1.ConductorStatefulSetName)
 			th.SimulateStatefulSetReplicaReady(cell1.NoVNCProxyStatefulSetName)
-			SimulateNoVNCProxyRouteIngress("cell1", cell1.CellName.Namespace)
+			SimulateNoVNCProxyService("cell1", cell1.CellName.Namespace)
 			th.SimulateStatefulSetReplicaReady(cell1.MetadataStatefulSetName)
 
 			th.ExpectCondition(
@@ -343,7 +341,7 @@ var _ = Describe("NovaCell controller", func() {
 			th.SimulateJobSuccess(cell1.CellDBSyncJobName)
 			th.SimulateStatefulSetReplicaReady(cell1.ConductorStatefulSetName)
 			th.SimulateStatefulSetReplicaReady(cell1.NoVNCProxyStatefulSetName)
-			SimulateNoVNCProxyRouteIngress("cell1", cell1.CellName.Namespace)
+			SimulateNoVNCProxyService("cell1", cell1.CellName.Namespace)
 			th.SimulateStatefulSetReplicaReady(cell1.MetadataStatefulSetName)
 
 			th.ExpectCondition(
@@ -464,7 +462,7 @@ var _ = Describe("NovaCell controller", func() {
 
 			// make novncproxy ready
 			th.SimulateStatefulSetReplicaReady(cell2.NoVNCProxyStatefulSetName)
-			host := SimulateNoVNCProxyRouteIngress("cell2", cell2.CellName.Namespace)
+			host := SimulateNoVNCProxyService("cell2", cell2.CellName.Namespace)
 
 			th.ExpectCondition(
 				cell2.CellName,
@@ -573,7 +571,7 @@ var _ = Describe("NovaCell controller", func() {
 				"Deployment in progress",
 			)
 			th.SimulateStatefulSetReplicaReady(cell2.NoVNCProxyStatefulSetName)
-			SimulateNoVNCProxyRouteIngress("cell2", cell2.CellName.Namespace)
+			SimulateNoVNCProxyService("cell2", cell2.CellName.Namespace)
 			th.ExpectCondition(
 				cell2.CellName,
 				ConditionGetterFunc(NovaCellConditionGetter),
@@ -843,7 +841,7 @@ var _ = Describe("NovaCell controller", func() {
 			th.SimulateJobSuccess(cell1.CellDBSyncJobName)
 			th.SimulateStatefulSetReplicaReady(cell1.ConductorStatefulSetName)
 			th.SimulateStatefulSetReplicaReady(cell1.NoVNCProxyStatefulSetName)
-			SimulateNoVNCProxyRouteIngress("cell1", cell1.CellName.Namespace)
+			SimulateNoVNCProxyService("cell1", cell1.CellName.Namespace)
 			th.SimulateStatefulSetReplicaReady(cell1.MetadataStatefulSetName)
 
 			cell := GetNovaCell(cell1.CellName)
