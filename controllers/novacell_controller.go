@@ -497,7 +497,7 @@ func (r *NovaCellReconciler) getVNCHost(
 	// <nova_instance>-<cell_name>-<service_name>-<service_type>
 	vncRouteName := fmt.Sprintf("nova-novncproxy-%s-public", instance.Spec.CellName)
 
-	svcOverride := service.GetOverrideSpecForEndpoint(instance.Spec.NoVNCProxyServiceTemplate.Override.Service, service.EndpointPublic)
+	svcOverride := ptr.To(instance.Spec.NoVNCProxyServiceTemplate.Override.Service[string(service.EndpointPublic)])
 	if svcOverride != nil &&
 		svcOverride.EndpointURL != nil {
 		return svcOverride.EndpointURL, nil

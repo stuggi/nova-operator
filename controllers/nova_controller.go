@@ -1212,7 +1212,7 @@ func (r *NovaReconciler) ensureMetadata(
 			Resources:              instance.Spec.MetadataServiceTemplate.Resources,
 			NetworkAttachments:     instance.Spec.MetadataServiceTemplate.NetworkAttachments,
 		},
-		Override:        cell0Template.MetadataServiceTemplate.Override,
+		Override:        instance.Spec.MetadataServiceTemplate.Override,
 		ServiceUser:     instance.Spec.ServiceUser,
 		KeystoneAuthURL: keystoneAuthURL,
 		ServiceAccount:  instance.RbacResourceName(),

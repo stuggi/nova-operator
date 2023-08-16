@@ -417,8 +417,10 @@ func (r *NovaNoVNCProxyReconciler) ensureServiceExposed(
 	apiEndpoints := make(map[string]string)
 
 	for endpointType, data := range ports {
-		serviceName := novncproxy.ServiceName + "-" + instance.Spec.CellName + "-" + string(endpointType)
-		svcOverride := service.GetOverrideSpecForEndpoint(instance.Spec.Override.Service, endpointType)
+		endpointTypeStr := string(endpointType)
+		serviceName := novncproxy.ServiceName + "-" + instance.Spec.CellName + "-" + endpointTypeStr
+
+		svcOverride := instance.Spec.Override.Service[endpointTypeStr]
 
 		exportLabels := util.MergeStringMaps(
 			getNoVNCProxyServiceLabels(instance.Spec.CellName),
@@ -441,7 +443,7 @@ func (r *NovaNoVNCProxyReconciler) ensureServiceExposed(
 				},
 			}),
 			5,
-			svcOverride,
+			&svcOverride,
 		)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
@@ -476,7 +478,7 @@ func (r *NovaNoVNCProxyReconciler) ensureServiceExposed(
 
 		// TODO: TLS, pass in https as protocol, create TLS cert
 		apiEndpoints[string(endpointType)], err = svc.GetAPIEndpoint(
-			svcOverride, data.Protocol, data.Path)
+			&svcOverride, data.Protocol, data.Path)
 		if err != nil {
 			return nil, ctrl.Result{}, err
 		}

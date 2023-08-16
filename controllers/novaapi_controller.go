@@ -472,8 +472,9 @@ func (r *NovaAPIReconciler) ensureServiceExposed(
 	apiEndpoints := make(map[string]string)
 
 	for endpointType, data := range ports {
-		endpointName := novaapi.ServiceName + "-" + string(endpointType)
-		svcOverride := service.GetOverrideSpecForEndpoint(instance.Spec.Override.Service, endpointType)
+		endpointTypeStr := string(endpointType)
+		endpointName := novaapi.ServiceName + "-" + endpointTypeStr
+		svcOverride := instance.Spec.Override.Service[endpointTypeStr]
 
 		exportLabels := util.MergeStringMaps(
 			getAPIServiceLabels(),
@@ -496,7 +497,7 @@ func (r *NovaAPIReconciler) ensureServiceExposed(
 				},
 			}),
 			5,
-			svcOverride,
+			&svcOverride,
 		)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
@@ -531,7 +532,7 @@ func (r *NovaAPIReconciler) ensureServiceExposed(
 
 		// TODO: TLS, pass in https as protocol, create TLS cert
 		apiEndpoints[string(endpointType)], err = svc.GetAPIEndpoint(
-			svcOverride, data.Protocol, data.Path)
+			&svcOverride, data.Protocol, data.Path)
 		if err != nil {
 			return nil, ctrl.Result{}, err
 		}

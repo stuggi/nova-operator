@@ -472,27 +472,24 @@ var _ = Describe("NovaMetadata controller", func() {
 				k8sClient.Delete, ctx, CreateNovaMetadataSecret(novaNames.MetadataName.Namespace, SecretName))
 
 			spec := GetDefaultNovaMetadataSpec()
-			var serviceOverride []interface{}
-			serviceOverride = append(
-				serviceOverride, map[string]interface{}{
-					"endpoint": "internal",
-					"metadata": map[string]map[string]string{
-						"annotations": {
-							"dnsmasq.network.openstack.org/hostname": "nova-metadata-internal.openstack.svc",
-							"metallb.universe.tf/address-pool":       "osp-internalapi",
-							"metallb.universe.tf/allow-shared-ip":    "osp-internalapi",
-							"metallb.universe.tf/loadBalancerIPs":    "internal-lb-ip-1,internal-lb-ip-2",
-						},
-						"labels": {
-							"internal": "true",
-							"service":  "nova",
-						},
+			serviceOverride := map[string]interface{}{}
+			serviceOverride["internal"] = map[string]interface{}{
+				"metadata": map[string]map[string]string{
+					"annotations": {
+						"dnsmasq.network.openstack.org/hostname": "nova-metadata-internal.openstack.svc",
+						"metallb.universe.tf/address-pool":       "osp-internalapi",
+						"metallb.universe.tf/allow-shared-ip":    "osp-internalapi",
+						"metallb.universe.tf/loadBalancerIPs":    "internal-lb-ip-1,internal-lb-ip-2",
 					},
-					"spec": map[string]interface{}{
-						"type": "LoadBalancer",
+					"labels": {
+						"internal": "true",
+						"service":  "nova",
 					},
 				},
-			)
+				"spec": map[string]interface{}{
+					"type": "LoadBalancer",
+				},
+			}
 
 			spec["override"] = map[string]interface{}{
 				"service": serviceOverride,
@@ -505,7 +502,7 @@ var _ = Describe("NovaMetadata controller", func() {
 		It("creates LoadBalancer service", func() {
 			th.SimulateStatefulSetReplicaReady(novaNames.MetadataStatefulSetName)
 
-			// As the internal endpoint is configured in ExternalEndpoints it
+			// As the internal endpoint is configured in service override it
 			// gets a LoadBalancer Service with MetalLB annotations
 			service := th.GetService(novaNames.InternalNovaMetadataServiceName)
 			Expect(service.Annotations).To(

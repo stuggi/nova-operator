@@ -428,12 +428,13 @@ func (r *NovaMetadataReconciler) ensureServiceExposed(
 	apiEndpoints := make(map[string]string)
 
 	for endpointType, data := range ports {
+		endpointTypeStr := string(endpointType)
 		serviceName := novametadata.ServiceName
 		if instance.Spec.CellName != "" {
 			serviceName = novametadata.ServiceName + "-" + instance.Spec.CellName
 		}
-		serviceName = serviceName + "-" + string(endpointType)
-		svcOverride := service.GetOverrideSpecForEndpoint(instance.Spec.Override.Service, endpointType)
+		serviceName = serviceName + "-" + endpointTypeStr
+		svcOverride := instance.Spec.Override.Service[endpointTypeStr]
 
 		exportLabels := util.MergeStringMaps(
 			getMetadataServiceLabels(instance.Spec.CellName),
@@ -456,7 +457,7 @@ func (r *NovaMetadataReconciler) ensureServiceExposed(
 				},
 			}),
 			5,
-			svcOverride,
+			&svcOverride,
 		)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
@@ -491,7 +492,7 @@ func (r *NovaMetadataReconciler) ensureServiceExposed(
 
 		// TODO: TLS, pass in https as protocol, create TLS cert
 		apiEndpoints[string(endpointType)], err = svc.GetAPIEndpoint(
-			svcOverride, data.Protocol, data.Path)
+			&svcOverride, data.Protocol, data.Path)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

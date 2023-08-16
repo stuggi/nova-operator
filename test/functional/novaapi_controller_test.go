@@ -488,27 +488,24 @@ var _ = Describe("NovaAPI controller", func() {
 	When("NovaAPI is created with service override", func() {
 		BeforeEach(func() {
 			spec := GetDefaultNovaAPISpec()
-			var serviceOverride []interface{}
-			serviceOverride = append(
-				serviceOverride, map[string]interface{}{
-					"endpoint": "internal",
-					"metadata": map[string]map[string]string{
-						"annotations": {
-							"dnsmasq.network.openstack.org/hostname": "nova-internal.openstack.svc",
-							"metallb.universe.tf/address-pool":       "osp-internalapi",
-							"metallb.universe.tf/allow-shared-ip":    "osp-internalapi",
-							"metallb.universe.tf/loadBalancerIPs":    "internal-lb-ip-1,internal-lb-ip-2",
-						},
-						"labels": {
-							"internal": "true",
-							"service":  "nova",
-						},
+			serviceOverride := map[string]interface{}{}
+			serviceOverride["internal"] = map[string]interface{}{
+				"metadata": map[string]map[string]string{
+					"annotations": {
+						"dnsmasq.network.openstack.org/hostname": "nova-internal.openstack.svc",
+						"metallb.universe.tf/address-pool":       "osp-internalapi",
+						"metallb.universe.tf/allow-shared-ip":    "osp-internalapi",
+						"metallb.universe.tf/loadBalancerIPs":    "internal-lb-ip-1,internal-lb-ip-2",
 					},
-					"spec": map[string]interface{}{
-						"type": "LoadBalancer",
+					"labels": {
+						"internal": "true",
+						"service":  "nova",
 					},
 				},
-			)
+				"spec": map[string]interface{}{
+					"type": "LoadBalancer",
+				},
+			}
 
 			spec["override"] = map[string]interface{}{
 				"service": serviceOverride,
