@@ -642,13 +642,16 @@ func (r *NovaCellReconciler) getVNCHost(
 	if err != nil {
 		return nil, err
 	}
-	svc, err := service.NewService(vncSvc, time.Duration(5)*time.Second, svcOverride)
+	svc, err := service.NewService(
+		vncSvc,
+		time.Duration(5)*time.Second,
+		svcOverride.GetOverrideSpec())
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: TLS
-	vncProxyURL, err := svc.GetAPIEndpoint(svcOverride, ptr.To(service.ProtocolHTTP), "/vnc_lite.html")
+	vncProxyURL, err := svc.GetAPIEndpoint(svcOverride.EndpointURL, ptr.To(service.ProtocolHTTP), "/vnc_lite.html")
 	if err != nil {
 		return nil, err
 	}

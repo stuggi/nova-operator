@@ -499,7 +499,7 @@ func (r *NovaMetadataReconciler) ensureServiceExposed(
 
 		// TODO: TLS, pass in https as protocol, create TLS cert
 		apiEndpoints[string(endpointType)], err = svc.GetAPIEndpoint(
-			&svcOverride, data.Protocol, data.Path)
+			nil, data.Protocol, data.Path)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

@@ -94,14 +94,12 @@ spec:
                     properties:
                       service:
                         additionalProperties:
-                          description: OverrideSpec - service override configuration
-                            for the Service created to serve traffic to the cluster.
-                            Allows for the manifest of the created Service to be overwritten
-                            with custom configuration.
+                          description: RoutedOverrideSpec - a routed service override
+                            configuration for the Service created to serve traffic
+                            to the cluster. Allows for the manifest of the created
+                            Service to be overwritten with custom configuration.
                           properties:
                             endpointURL:
-                              description: EndpointURL to be used to register the
-                                service in keystone.
                               type: string
                             metadata:
                               description: EmbeddedLabelsAnnotations is an embedded
@@ -127,8 +125,11 @@ spec:
                                   type: object
                               type: object
                             spec:
-                              description: Spec defines the behavior of a Service.
-                                https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+                              description: OverrideServiceSpec is a subset of the
+                                fields included in https://pkg.go.dev/k8s.io/api@v0.26.6/core/v1#ServiceSpec
+                                Limited to Type, SessionAffinity, LoadBalancerSourceRanges,
+                                ExternalName, ExternalTrafficPolicy, SessionAffinityConfig,
+                                IPFamilyPolicy, LoadBalancerClass and InternalTrafficPolicy
                               properties:
                                 externalName:
                                   description: externalName is the external reference
@@ -515,10 +516,6 @@ spec:
                                   cluster. Allows for the manifest of the created
                                   Service to be overwritten with custom configuration.
                                 properties:
-                                  endpointURL:
-                                    description: EndpointURL to be used to register
-                                      the service in keystone.
-                                    type: string
                                   metadata:
                                     description: EmbeddedLabelsAnnotations is an embedded
                                       subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta.
@@ -545,8 +542,11 @@ spec:
                                         type: object
                                     type: object
                                   spec:
-                                    description: Spec defines the behavior of a Service.
-                                      https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+                                    description: OverrideServiceSpec is a subset of
+                                      the fields included in https://pkg.go.dev/k8s.io/api@v0.26.6/core/v1#ServiceSpec
+                                      Limited to Type, SessionAffinity, LoadBalancerSourceRanges,
+                                      ExternalName, ExternalTrafficPolicy, SessionAffinityConfig,
+                                      IPFamilyPolicy, LoadBalancerClass and InternalTrafficPolicy
                                     properties:
                                       externalName:
                                         description: externalName is the external
@@ -818,14 +818,13 @@ spec:
                           properties:
                             service:
                               additionalProperties:
-                                description: OverrideSpec - service override configuration
-                                  for the Service created to serve traffic to the
-                                  cluster. Allows for the manifest of the created
-                                  Service to be overwritten with custom configuration.
+                                description: RoutedOverrideSpec - a routed service
+                                  override configuration for the Service created to
+                                  serve traffic to the cluster. Allows for the manifest
+                                  of the created Service to be overwritten with custom
+                                  configuration.
                                 properties:
                                   endpointURL:
-                                    description: EndpointURL to be used to register
-                                      the service in keystone.
                                     type: string
                                   metadata:
                                     description: EmbeddedLabelsAnnotations is an embedded
@@ -853,8 +852,11 @@ spec:
                                         type: object
                                     type: object
                                   spec:
-                                    description: Spec defines the behavior of a Service.
-                                      https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+                                    description: OverrideServiceSpec is a subset of
+                                      the fields included in https://pkg.go.dev/k8s.io/api@v0.26.6/core/v1#ServiceSpec
+                                      Limited to Type, SessionAffinity, LoadBalancerSourceRanges,
+                                      ExternalName, ExternalTrafficPolicy, SessionAffinityConfig,
+                                      IPFamilyPolicy, LoadBalancerClass and InternalTrafficPolicy
                                     properties:
                                       externalName:
                                         description: externalName is the external
@@ -1202,10 +1204,6 @@ spec:
                             Allows for the manifest of the created Service to be overwritten
                             with custom configuration.
                           properties:
-                            endpointURL:
-                              description: EndpointURL to be used to register the
-                                service in keystone.
-                              type: string
                             metadata:
                               description: EmbeddedLabelsAnnotations is an embedded
                                 subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta.
@@ -1230,8 +1228,11 @@ spec:
                                   type: object
                               type: object
                             spec:
-                              description: Spec defines the behavior of a Service.
-                                https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+                              description: OverrideServiceSpec is a subset of the
+                                fields included in https://pkg.go.dev/k8s.io/api@v0.26.6/core/v1#ServiceSpec
+                                Limited to Type, SessionAffinity, LoadBalancerSourceRanges,
+                                ExternalName, ExternalTrafficPolicy, SessionAffinityConfig,
+                                IPFamilyPolicy, LoadBalancerClass and InternalTrafficPolicy
                               properties:
                                 externalName:
                                   description: externalName is the external reference
