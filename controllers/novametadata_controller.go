@@ -40,6 +40,7 @@ import (
 	common_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/statefulset"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	novav1 "github.com/openstack-k8s-operators/nova-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/nova-operator/pkg/nova"
@@ -167,6 +168,55 @@ func (r *NovaMetadataReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// all our input checks out so report InputReady
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 
+	//
+	// TLS input validation
+	//
+	// Validate the CA cert secret if provided
+	if instance.Spec.TLS.CaBundleSecretName != "" {
+		hash, ctrlResult, err := tls.ValidateCACertSecret(
+			ctx,
+			h.GetClient(),
+			types.NamespacedName{
+				Name:      instance.Spec.TLS.CaBundleSecretName,
+				Namespace: instance.Namespace,
+			},
+		)
+		if err != nil {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.TLSInputReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.TLSInputErrorMessage,
+				err.Error()))
+			return ctrlResult, err
+		} else if (ctrlResult != ctrl.Result{}) {
+			return ctrlResult, nil
+		}
+
+		if hash != "" {
+			hashes[tls.CABundleKey] = env.SetValue(hash)
+		}
+	}
+
+	// Validate metadata service cert secret
+	if instance.Spec.TLS.Enabled() {
+		hash, ctrlResult, err := instance.Spec.TLS.ValidateCertSecret(ctx, h, instance.Namespace)
+		if err != nil {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.TLSInputReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.TLSInputErrorMessage,
+				err.Error()))
+			return ctrl.Result{}, err
+		} else if (ctrlResult != ctrl.Result{}) {
+			return ctrlResult, nil
+		}
+		hashes[tls.TLSHashName] = env.SetValue(hash)
+	}
+	// all cert input checks out so report InputReady
+	instance.Status.Conditions.MarkTrue(condition.TLSInputReadyCondition, condition.InputReadyMessage)
+
 	err = r.ensureConfigs(ctx, h, instance, &hashes, secret)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -283,6 +333,11 @@ func (r *NovaMetadataReconciler) initConditions(
 				condition.InitReason,
 				novav1.NovaComputeServiceConfigInitMessage,
 			),
+			condition.UnknownCondition(
+				condition.TLSInputReadyCondition,
+				condition.InitReason,
+				condition.InputReadyInitMessage,
+			),
 		)
 
 		instance.Status.Conditions.Init(&cl)
@@ -331,6 +386,8 @@ func (r *NovaMetadataReconciler) generateConfigs(
 		"metadata_secret":        string(secret.Data[MetadataSecretSelector]),
 		"log_file":               "/var/log/nova/nova-metadata.log",
 		"transport_url":          string(secret.Data[TransportURLSelector]),
+		"tls":                    false,
+		"ServerName":             fmt.Sprintf("%s.%s.svc", novametadata.ServiceName, instance.Namespace),
 	}
 
 	if instance.Spec.CellName == "" {
@@ -342,6 +399,13 @@ func (r *NovaMetadataReconciler) generateConfigs(
 		templateParameters["local_metadata_per_cell"] = false
 	} else {
 		templateParameters["local_metadata_per_cell"] = true
+	}
+
+	// create httpd tls template parameters
+	if instance.Spec.TLS.GenericService.Enabled() {
+		templateParameters["tls"] = true
+		templateParameters["SSLCertificateFile"] = fmt.Sprintf("/etc/pki/tls/certs/%s.crt", novametadata.ServiceName)
+		templateParameters["SSLCertificateKeyFile"] = fmt.Sprintf("/etc/pki/tls/private/%s.key", novametadata.ServiceName)
 	}
 
 	extraData := map[string]string{}
@@ -373,7 +437,18 @@ func (r *NovaMetadataReconciler) ensureDeployment(
 	Log := r.GetLogger(ctx)
 
 	serviceLabels := getMetadataServiceLabels(instance.Spec.CellName)
-	ss := statefulset.NewStatefulSet(novametadata.StatefulSet(instance, inputHash, serviceLabels, annotations), r.RequeueTimeout)
+	ssSpec, err := novametadata.StatefulSet(instance, inputHash, serviceLabels, annotations)
+	if err != nil {
+		Log.Error(err, "Deployment failed")
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DeploymentReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.DeploymentReadyErrorMessage,
+			err.Error()))
+		return ctrl.Result{}, err
+	}
+	ss := statefulset.NewStatefulSet(ssSpec, r.RequeueTimeout)
 	ctrlResult, err := ss.CreateOrPatch(ctx, h)
 	if err != nil && !k8s_errors.IsNotFound(err) {
 		Log.Error(err, "Deployment failed")
@@ -517,9 +592,14 @@ func (r *NovaMetadataReconciler) ensureServiceExposed(
 	}
 	// create service - end
 
-	// TODO: TLS, pass in https as protocol
+	// if TLS is enabled
+	proto := ptr.To(service.ProtocolHTTP)
+	if instance.Spec.TLS.Enabled() {
+		// set endpoint protocol to https
+		proto = ptr.To(service.ProtocolHTTPS)
+	}
 	apiEndpoint, err := svc.GetAPIEndpoint(
-		nil, ptr.To(service.ProtocolHTTP), "")
+		nil, proto, "")
 	if err != nil {
 		return "", ctrl.Result{}, err
 	}

@@ -845,6 +845,7 @@ func (r *NovaReconciler) ensureCell(
 		ServiceUser:     instance.Spec.ServiceUser,
 		KeystoneAuthURL: keystoneAuthURL,
 		ServiceAccount:  instance.RbacResourceName(),
+		TLS:             instance.Spec.APIServiceTemplate.TLS.Ca,
 	}
 	if cellTemplate.HasAPIAccess {
 		cellSpec.APIDatabaseHostname = apiDB.GetDatabaseHostname()
@@ -1005,6 +1006,7 @@ func (r *NovaReconciler) ensureAPI(
 		ServiceUser:           instance.Spec.ServiceUser,
 		ServiceAccount:        instance.RbacResourceName(),
 		RegisteredCells:       instance.Status.RegisteredCells,
+		TLS:                   instance.Spec.APIServiceTemplate.TLS,
 	}
 	api := &novav1.NovaAPI{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1080,6 +1082,7 @@ func (r *NovaReconciler) ensureScheduler(
 		ServiceUser:     instance.Spec.ServiceUser,
 		ServiceAccount:  instance.RbacResourceName(),
 		RegisteredCells: instance.Status.RegisteredCells,
+		TLS:             instance.Spec.APIServiceTemplate.TLS.Ca,
 	}
 	scheduler := &novav1.NovaScheduler{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1427,6 +1430,7 @@ func (r *NovaReconciler) ensureMetadata(
 		KeystoneAuthURL: keystoneAuthURL,
 		ServiceAccount:  instance.RbacResourceName(),
 		RegisteredCells: instance.Status.RegisteredCells,
+		TLS:             instance.Spec.MetadataServiceTemplate.TLS,
 	}
 	metadata = &novav1.NovaMetadata{
 		ObjectMeta: metav1.ObjectMeta{
