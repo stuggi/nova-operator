@@ -348,10 +348,13 @@ func (r *NovaNoVNCProxyReconciler) generateConfigs(
 		"cell_db_address":        instance.Spec.CellDatabaseHostname,
 		"cell_db_port":           3306,
 		"transport_url":          string(secret.Data[TransportURLSelector]),
-		"openstack_cacert":       "",          // fixme
 		"openstack_region_name":  "regionOne", // fixme
 		"default_project_domain": "Default",   // fixme
 		"default_user_domain":    "Default",   // fixme
+	}
+	if instance.Spec.TLS.GenericService.Enabled() {
+		templateParameters["SSLCertificateFile"] = fmt.Sprintf("/etc/pki/tls/certs/%s.crt", novncproxy.ServiceName)
+		templateParameters["SSLCertificateKeyFile"] = fmt.Sprintf("/etc/pki/tls/private/%s.key", novncproxy.ServiceName)
 	}
 	extraData := map[string]string{}
 	if instance.Spec.CustomServiceConfig != "" {

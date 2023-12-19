@@ -153,6 +153,11 @@ func StatefulSet(
 				Spec: corev1.PodSpec{
 					ServiceAccountName: instance.Spec.ServiceAccount,
 					Volumes:            volumes,
+					SecurityContext: &corev1.PodSecurityContext{
+						// since we run as NovaUserID, e.g. certs need to be
+						// readable by the user, instead of root
+						FSGroup: ptr.To(nova.NovaUserID),
+					},
 					Containers: []corev1.Container{
 						{
 							Name: instance.Name + "-novncproxy",

@@ -125,7 +125,6 @@ func StatefulSet(
 	}
 
 	if instance.Spec.TLS.GenericService.Enabled() {
-
 		svc, err := instance.Spec.TLS.GenericService.ToService()
 		if err != nil {
 			return nil, err
