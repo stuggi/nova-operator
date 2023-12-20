@@ -71,4 +71,4 @@ replace github.com/openshift/api => github.com/openshift/api v0.0.0-202304141430
 
 //replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/deydra71/lib-common/modules/common v0.0.0-20231213134015-7e9e5e1dca40
 //replace github.com/openstack-k8s-operators/lib-common/modules/common => /home/mschuppe/src/github.com/openstack-k8s-operators/lib-common/modules/common
-replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/stuggi/lib-common/modules/common v0.0.0-20231214125355-aa1c8b95a5fa
+replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/stuggi/lib-common/modules/common v0.0.0-20231220101212-e0281ca4f62d
