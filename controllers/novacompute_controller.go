@@ -347,7 +347,7 @@ func (r *NovaComputeReconciler) generateConfigs(
 	)
 
 	err := r.GenerateConfigs(
-		ctx, h, instance, nova.GetServiceConfigSecretName(instance.GetName()), hashes, templateParameters, extraData, cmLabels, map[string]string{},
+		ctx, h, instance, nova.GetServiceConfigSecretName(instance.GetName()), hashes, templateParameters, extraData, cmLabels, map[string]string{}, map[string]string{},
 	)
 	return err
 }

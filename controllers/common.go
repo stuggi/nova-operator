@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -42,6 +43,7 @@ import (
 	gophercloud "github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/services"
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	helper "github.com/openstack-k8s-operators/lib-common/modules/common/helper"
@@ -94,13 +96,14 @@ const (
 	TransportURLSelector = "transport_url"
 
 	// fields to index to reconcile when change
-	passwordSecretField        = ".spec.secret"
-	caBundleSecretNameField    = ".spec.tls.caBundleSecretName"
-	tlsAPIInternalField        = ".spec.tls.api.internal.secretName"
-	tlsAPIPublicField          = ".spec.tls.api.public.secretName"
-	tlsMetadataField           = ".spec.tls.secretName"
-	tlsNoVNCProxyServiceField  = ".spec.tls.service.secretName"
-	tlsNoVNCProxyVencryptField = ".spec.tls.vencrypt.secretName"
+	passwordSecretField                 = ".spec.secret"
+	caBundleSecretNameField             = ".spec.tls.caBundleSecretName"
+	tlsAPIInternalField                 = ".spec.tls.api.internal.secretName"
+	tlsAPIPublicField                   = ".spec.tls.api.public.secretName"
+	tlsMetadataField                    = ".spec.tls.secretName"
+	tlsNoVNCProxyServiceField           = ".spec.tls.service.secretName"
+	tlsNoVNCProxyVencryptField          = ".spec.tls.vencrypt.secretName"
+	httpdCustomServiceConfigSecretField = ".spec.httpdCustomization.customServiceConfigSecret"
 
 	// NovaAPIDatabaseName is the name of the DB schema created for the
 	// top level nova DB
@@ -402,6 +405,7 @@ func (r *ReconcilerBase) generateConfigsGeneric(
 	templateParameters map[string]interface{},
 	extraData map[string]string, cmLabels map[string]string,
 	additionalTemplates map[string]string,
+	stringTemplates map[string]string,
 	withScripts bool,
 ) error {
 
@@ -413,6 +417,14 @@ func (r *ReconcilerBase) generateConfigsGeneric(
 	for k, v := range additionalTemplates {
 		extraTemplates[k] = v
 	}
+
+	// Marshal the templateParameters map to YAML
+	yamlData, err := yaml.Marshal(templateParameters)
+	if err != nil {
+		return fmt.Errorf("Error marshalling to YAML: %w", err)
+	}
+	extraData[common.TemplateParameters] = string(yamlData)
+
 	cms := []util.Template{
 		{
 			Name:               configName,
@@ -424,6 +436,7 @@ func (r *ReconcilerBase) generateConfigsGeneric(
 			CustomData:         extraData,
 			Annotations:        map[string]string{},
 			AdditionalTemplate: extraTemplates,
+			StringTemplate:     stringTemplates,
 		},
 	}
 	if withScripts {
@@ -447,10 +460,11 @@ func (r *ReconcilerBase) GenerateConfigs(
 	templateParameters map[string]interface{},
 	extraData map[string]string, cmLabels map[string]string,
 	additionalTemplates map[string]string,
+	stringTemplates map[string]string,
 ) error {
 	return r.generateConfigsGeneric(
 		ctx, h, instance, configName, envVars, templateParameters, extraData,
-		cmLabels, additionalTemplates, false,
+		cmLabels, additionalTemplates, stringTemplates, false,
 	)
 }
 
@@ -462,11 +476,12 @@ func (r *ReconcilerBase) GenerateConfigsWithScripts(
 	templateParameters map[string]interface{},
 	extraData map[string]string, cmLabels map[string]string,
 	additionalTemplates map[string]string,
+	stringTemplates map[string]string,
 ) error {
 	return r.generateConfigsGeneric(
 		ctx, h, instance, nova.GetServiceConfigSecretName(instance.GetName()),
 		envVars, templateParameters, extraData,
-		cmLabels, additionalTemplates, true,
+		cmLabels, additionalTemplates, stringTemplates, true,
 	)
 }
 

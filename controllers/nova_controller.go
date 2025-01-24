@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"gopkg.in/yaml.v3"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -972,6 +973,13 @@ func (r *NovaReconciler) ensureNovaManageJobSecret(
 		templateParameters["transport_url"] = cellTransportURL
 	}
 
+	// Marshal the templateParameters map to YAML
+	yamlData, err := yaml.Marshal(templateParameters)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("Error marshalling to YAML: %w", err)
+	}
+	extraData[common.TemplateParameters] = string(yamlData)
+
 	cms := []util.Template{
 		{
 			Name:         scriptName,
@@ -1282,6 +1290,7 @@ func (r *NovaReconciler) ensureAPI(
 		DefaultConfigOverwrite: instance.Spec.APIServiceTemplate.DefaultConfigOverwrite,
 		MemcachedInstance:      getMemcachedInstance(instance, cell0Template),
 		APITimeout:             instance.Spec.APITimeout,
+		HttpdCustomization:     instance.Spec.APIServiceTemplate.HttpdCustomization,
 	}
 	api := &novav1.NovaAPI{
 		ObjectMeta: metav1.ObjectMeta{

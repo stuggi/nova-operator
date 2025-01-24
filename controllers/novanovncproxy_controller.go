@@ -478,7 +478,7 @@ func (r *NovaNoVNCProxyReconciler) generateConfigs(
 
 	err = r.GenerateConfigs(
 		ctx, h, instance, nova.GetServiceConfigSecretName(instance.GetName()),
-		hashes, templateParameters, extraData, cmLabels, map[string]string{},
+		hashes, templateParameters, extraData, cmLabels, map[string]string{}, map[string]string{},
 	)
 	return err
 }
