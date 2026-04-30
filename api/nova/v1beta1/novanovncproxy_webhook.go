@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
@@ -52,9 +51,8 @@ func SetupNovaNoVNCProxyDefaults(defaults NovaNoVNCProxyDefaults) {
 	novanovncproxylog.Info("NovaNoVNCProxy defaults initialized", "defaults", defaults)
 }
 
-var _ webhook.Defaulter = &NovaNoVNCProxy{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type
+// Default implements defaulting so a webhook will be registered for the type
 func (r *NovaNoVNCProxy) Default() {
 	novanovncproxylog.Info("default", "name", r.Name)
 
@@ -68,9 +66,8 @@ func (spec *NovaNoVNCProxySpec) Default() {
 	}
 }
 
-var _ webhook.Validator = &NovaNoVNCProxy{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+// ValidateCreate implements validation so a webhook will be registered for the type
 func (r *NovaNoVNCProxy) ValidateCreate() (admission.Warnings, error) {
 	novanovncproxylog.Info("validate create", "name", r.Name)
 
@@ -89,7 +86,7 @@ func (r *NovaNoVNCProxy) ValidateCreate() (admission.Warnings, error) {
 	return nil, nil
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+// ValidateUpdate implements validation so a webhook will be registered for the type
 func (r *NovaNoVNCProxy) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	novanovncproxylog.Info("validate update", "name", r.Name)
 	errors := field.ErrorList{}
@@ -115,7 +112,7 @@ func (r *NovaNoVNCProxy) ValidateUpdate(old runtime.Object) (admission.Warnings,
 	return nil, nil
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+// ValidateDelete implements validation so a webhook will be registered for the type
 func (r *NovaNoVNCProxy) ValidateDelete() (admission.Warnings, error) {
 	novanovncproxylog.Info("validate delete", "name", r.Name)
 

@@ -29,7 +29,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
@@ -52,9 +51,8 @@ func SetupNovaSchedulerDefaults(defaults NovaSchedulerDefaults) {
 	novaschedulerlog.Info("NovaScheduler defaults initialized", "defaults", defaults)
 }
 
-var _ webhook.Defaulter = &NovaScheduler{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type
+// Default implements defaulting so a webhook will be registered for the type
 func (r *NovaScheduler) Default() {
 	novaschedulerlog.Info("default", "name", r.Name)
 
@@ -68,9 +66,8 @@ func (spec *NovaSchedulerSpec) Default() {
 	}
 }
 
-var _ webhook.Validator = &NovaScheduler{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+// ValidateCreate implements validation so a webhook will be registered for the type
 func (r *NovaScheduler) ValidateCreate() (admission.Warnings, error) {
 	novaschedulerlog.Info("validate create", "name", r.Name)
 	errors := field.ErrorList{}
@@ -88,7 +85,7 @@ func (r *NovaScheduler) ValidateCreate() (admission.Warnings, error) {
 	return nil, nil
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+// ValidateUpdate implements validation so a webhook will be registered for the type
 func (r *NovaScheduler) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	novaschedulerlog.Info("validate update", "name", r.Name)
 	errors := field.ErrorList{}
@@ -113,7 +110,7 @@ func (r *NovaScheduler) ValidateUpdate(old runtime.Object) (admission.Warnings, 
 	return nil, nil
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+// ValidateDelete implements validation so a webhook will be registered for the type
 func (r *NovaScheduler) ValidateDelete() (admission.Warnings, error) {
 	novaschedulerlog.Info("validate delete", "name", r.Name)
 

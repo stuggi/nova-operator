@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 )
@@ -53,9 +52,8 @@ func SetupNovaComputeDefaults(defaults NovaComputeDefaults) {
 	novacomputelog.Info("NovaCompute defaults initialized", "defaults", defaults)
 }
 
-var _ webhook.Defaulter = &NovaCompute{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type
+// Default implements defaulting so a webhook will be registered for the type
 func (r *NovaCompute) Default() {
 	novacomputelog.Info("default", "name", r.Name)
 
@@ -69,9 +67,8 @@ func (spec *NovaComputeSpec) Default() {
 	}
 }
 
-var _ webhook.Validator = &NovaCompute{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+// ValidateCreate implements validation so a webhook will be registered for the type
 func (r *NovaCompute) ValidateCreate() (admission.Warnings, error) {
 	novacomputelog.Info("validate create", "name", r.Name)
 
@@ -86,7 +83,7 @@ func (r *NovaCompute) ValidateCreate() (admission.Warnings, error) {
 	return nil, nil
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+// ValidateUpdate implements validation so a webhook will be registered for the type
 func (r *NovaCompute) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	novacomputelog.Info("validate update", "name", r.Name)
 	oldNovaCompute, ok := old.(*NovaCompute)
@@ -118,7 +115,7 @@ func (spec *NovaComputeSpec) ValidateUpdate(old NovaComputeSpec, basePath *field
 	return spec.validate(basePath, namespace)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+// ValidateDelete implements validation so a webhook will be registered for the type
 func (r *NovaCompute) ValidateDelete() (admission.Warnings, error) {
 	novacomputelog.Info("validate delete", "name", r.Name)
 

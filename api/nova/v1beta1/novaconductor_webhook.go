@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 )
@@ -52,9 +51,8 @@ func SetupNovaConductorDefaults(defaults NovaConductorDefaults) {
 	novaconductorlog.Info("NovaConductor defaults initialized", "defaults", defaults)
 }
 
-var _ webhook.Defaulter = &NovaConductor{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type
+// Default implements defaulting so a webhook will be registered for the type
 func (r *NovaConductor) Default() {
 	novaconductorlog.Info("default", "name", r.Name)
 
@@ -68,9 +66,8 @@ func (spec *NovaConductorSpec) Default() {
 	}
 }
 
-var _ webhook.Validator = &NovaConductor{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+// ValidateCreate implements validation so a webhook will be registered for the type
 func (r *NovaConductor) ValidateCreate() (admission.Warnings, error) {
 	novaconductorlog.Info("validate create", "name", r.Name)
 	errors := field.ErrorList{}
@@ -91,7 +88,7 @@ func (r *NovaConductor) ValidateCreate() (admission.Warnings, error) {
 	return nil, nil
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+// ValidateUpdate implements validation so a webhook will be registered for the type
 func (r *NovaConductor) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	novaconductorlog.Info("validate update", "name", r.Name)
 	errors := field.ErrorList{}
@@ -119,7 +116,7 @@ func (r *NovaConductor) ValidateUpdate(old runtime.Object) (admission.Warnings, 
 	return nil, nil
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+// ValidateDelete implements validation so a webhook will be registered for the type
 func (r *NovaConductor) ValidateDelete() (admission.Warnings, error) {
 	novaconductorlog.Info("validate delete", "name", r.Name)
 

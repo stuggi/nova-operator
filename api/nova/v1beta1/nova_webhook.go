@@ -36,7 +36,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -59,9 +58,8 @@ func SetupNovaDefaults(defaults NovaDefaults) {
 	novalog.Info("Nova defaults initialized", "defaults", defaults)
 }
 
-var _ webhook.Defaulter = &Nova{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type
+// Default implements defaulting so a webhook will be registered for the type
 func (r *Nova) Default() {
 	novalog.Info("default", "name", r.Name)
 
@@ -130,7 +128,6 @@ func (spec *NovaSpecCore) Default() {
 	}
 }
 
-var _ webhook.Validator = &Nova{}
 
 // ValidateCellTemplates validates cell templates configuration
 func (spec *NovaSpecCore) ValidateCellTemplates(basePath *field.Path, namespace string) field.ErrorList {
@@ -335,7 +332,7 @@ func (spec *NovaSpecCore) ValidateCreate(basePath *field.Path, namespace string)
 	return warnings, errors
 }
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+// ValidateCreate implements validation so a webhook will be registered for the type
 func (r *Nova) ValidateCreate() (admission.Warnings, error) {
 	novalog.Info("validate create", "name", r.Name)
 
@@ -388,7 +385,7 @@ func (spec *NovaSpecCore) ValidateUpdate(old NovaSpecCore, basePath *field.Path,
 	return warnings, errors
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+// ValidateUpdate implements validation so a webhook will be registered for the type
 func (r *Nova) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	novalog.Info("validate update", "name", r.Name)
 	oldNova, ok := old.(*Nova)
@@ -408,7 +405,7 @@ func (r *Nova) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	return warnings, nil
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+// ValidateDelete implements validation so a webhook will be registered for the type
 func (r *Nova) ValidateDelete() (admission.Warnings, error) {
 	novalog.Info("validate delete", "name", r.Name)
 
