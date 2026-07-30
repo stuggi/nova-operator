@@ -16,6 +16,7 @@ limitations under the License.
 package placement
 
 import (
+	"github.com/openstack-k8s-operators/lib-common/modules/common/volume"
 	internalcommon "github.com/openstack-k8s-operators/nova-operator/internal/common"
 
 	corev1 "k8s.io/api/core/v1"
@@ -24,7 +25,7 @@ import (
 // getVolumes - service volumes
 func getVolumes(name string) []corev1.Volume {
 	var scriptsVolumeDefaultMode int32 = 0755
-	var configMode int32 = 0640
+	var configMode int32 = 0440
 
 	return []corev1.Volume{
 		{
@@ -45,39 +46,102 @@ func getVolumes(name string) []corev1.Volume {
 				},
 			},
 		},
-		{
-			Name: "logs",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{Medium: ""},
-			},
-		},
+		volume.WritableDirVolume("logs"),
+		volume.WritableDirVolume(volume.TmpVolumeName),
 	}
 
 }
 
-// getVolumeMounts - general VolumeMounts
-func getVolumeMounts(serviceName string) []corev1.VolumeMount {
-	return []corev1.VolumeMount{
+// getVolumeMounts - API deployment VolumeMounts
+func getVolumeMounts(withPolicy bool) []corev1.VolumeMount {
+	vm := []corev1.VolumeMount{
 		{
 			Name:      "scripts",
 			MountPath: "/usr/local/bin/container-scripts",
 			ReadOnly:  true,
 		},
-		{
-			Name:      "logs",
-			MountPath: "/var/log/placement",
-			ReadOnly:  false,
-		},
+		volume.WritableDirVolumeMount("logs", "/var/log/placement"),
 		{
 			Name:      "config-data",
-			MountPath: "/var/lib/openstack/config",
-			ReadOnly:  false,
-		},
-		{
-			Name:      "config-data",
-			MountPath: "/var/lib/kolla/config_files/config.json",
-			SubPath:   "placement-" + serviceName + "-config.json",
+			MountPath: "/etc/placement/placement.conf",
+			SubPath:   "placement.conf",
 			ReadOnly:  true,
 		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/placement/placement.conf.d/custom.conf",
+			SubPath:   "custom.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/httpd/conf/httpd.conf",
+			SubPath:   "httpd.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/httpd/conf.d/ssl.conf",
+			SubPath:   "ssl.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/my.cnf",
+			SubPath:   "my.cnf",
+			ReadOnly:  true,
+		},
+		volume.WritableDirVolumeMount(volume.RunHttpdVolumeName, volume.RunHttpdMountPath),
+		volume.WritableDirVolumeMount(volume.TmpVolumeName, volume.TmpMountPath),
+		volume.WritableDirVolumeMount(volume.VarLogHttpdVolumeName, volume.VarLogHttpdMountPath),
 	}
+	if withPolicy {
+		vm = append(vm, corev1.VolumeMount{
+			Name:      "config-data",
+			MountPath: "/etc/placement/policy.yaml",
+			SubPath:   "policy.yaml",
+			ReadOnly:  true,
+		})
+	}
+	return vm
+}
+
+// getDBSyncVolumeMounts - db-sync job VolumeMounts
+func getDBSyncVolumeMounts(withPolicy bool) []corev1.VolumeMount {
+	vm := []corev1.VolumeMount{
+		{
+			Name:      "scripts",
+			MountPath: "/usr/local/bin/container-scripts",
+			ReadOnly:  true,
+		},
+		volume.WritableDirVolumeMount("logs", "/var/log/placement"),
+		{
+			Name:      "config-data",
+			MountPath: "/etc/placement/placement.conf",
+			SubPath:   "placement.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/placement/placement.conf.d/custom.conf",
+			SubPath:   "custom.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/my.cnf",
+			SubPath:   "my.cnf",
+			ReadOnly:  true,
+		},
+		volume.WritableDirVolumeMount(volume.TmpVolumeName, volume.TmpMountPath),
+	}
+	if withPolicy {
+		vm = append(vm, corev1.VolumeMount{
+			Name:      "config-data",
+			MountPath: "/etc/placement/policy.yaml",
+			SubPath:   "policy.yaml",
+			ReadOnly:  true,
+		})
+	}
+	return vm
 }

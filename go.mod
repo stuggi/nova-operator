@@ -125,6 +125,10 @@ require (
 
 replace github.com/openstack-k8s-operators/nova-operator/api => ./api
 
+replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/stuggi/lib-common/modules/common v0.0.0-20260805100006-d99cd171112d
+
+replace github.com/openstack-k8s-operators/lib-common/modules/serviceuser => github.com/stuggi/lib-common/modules/serviceuser v0.0.0-20260805100006-d99cd171112d
+
 // mschuppert: map to latest commit from release-4.20 tag
 // must consistent within modules and service operators
 replace github.com/openshift/api => github.com/openshift/api v0.0.0-20260710141509-36dec0bfafe4 //allow-merging
