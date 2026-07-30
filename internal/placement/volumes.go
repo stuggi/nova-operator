@@ -51,13 +51,19 @@ func getVolumes(name string) []corev1.Volume {
 				EmptyDir: &corev1.EmptyDirVolumeSource{Medium: ""},
 			},
 		},
+		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 
 }
 
-// getVolumeMounts - general VolumeMounts
-func getVolumeMounts(serviceName string) []corev1.VolumeMount {
-	return []corev1.VolumeMount{
+// getVolumeMounts - API deployment VolumeMounts
+func getVolumeMounts(withPolicy bool) []corev1.VolumeMount {
+	vm := []corev1.VolumeMount{
 		{
 			Name:      "scripts",
 			MountPath: "/usr/local/bin/container-scripts",
@@ -70,14 +76,101 @@ func getVolumeMounts(serviceName string) []corev1.VolumeMount {
 		},
 		{
 			Name:      "config-data",
-			MountPath: "/var/lib/openstack/config",
+			MountPath: "/etc/placement/placement.conf",
+			SubPath:   "placement.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/placement/placement.conf.d/custom.conf",
+			SubPath:   "custom.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/httpd/conf/httpd.conf",
+			SubPath:   "httpd.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/httpd/conf.d/ssl.conf",
+			SubPath:   "ssl.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/my.cnf",
+			SubPath:   "my.cnf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "run-httpd",
+			MountPath: "/run/httpd",
+		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
+		{
+			Name:      "var-log-httpd",
+			MountPath: "/var/log/httpd",
+		},
+	}
+	if withPolicy {
+		vm = append(vm, corev1.VolumeMount{
+			Name:      "config-data",
+			MountPath: "/etc/placement/policy.yaml",
+			SubPath:   "policy.yaml",
+			ReadOnly:  true,
+		})
+	}
+	return vm
+}
+
+// getDBSyncVolumeMounts - db-sync job VolumeMounts
+func getDBSyncVolumeMounts(withPolicy bool) []corev1.VolumeMount {
+	vm := []corev1.VolumeMount{
+		{
+			Name:      "scripts",
+			MountPath: "/usr/local/bin/container-scripts",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "logs",
+			MountPath: "/var/log/placement",
 			ReadOnly:  false,
 		},
 		{
 			Name:      "config-data",
-			MountPath: "/var/lib/kolla/config_files/config.json",
-			SubPath:   "placement-" + serviceName + "-config.json",
+			MountPath: "/etc/placement/placement.conf",
+			SubPath:   "placement.conf",
 			ReadOnly:  true,
 		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/placement/placement.conf.d/custom.conf",
+			SubPath:   "custom.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/my.cnf",
+			SubPath:   "my.cnf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
 	}
+	if withPolicy {
+		vm = append(vm, corev1.VolumeMount{
+			Name:      "config-data",
+			MountPath: "/etc/placement/policy.yaml",
+			SubPath:   "policy.yaml",
+			ReadOnly:  true,
+		})
+	}
+	return vm
 }
