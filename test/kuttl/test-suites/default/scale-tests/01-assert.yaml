@@ -523,31 +523,28 @@ spec:
       template:
         spec:
           containers:
-          - args:
-            - -c
-            - /usr/local/bin/kolla_start
-            command:
-            - /bin/bash
+          - command:
+            - /var/lib/openstack/bin/dbpurge.sh
             env:
             - name: ARCHIVE_AGE
               value: "30"
-            - name: KOLLA_BOOTSTRAP
-              value: "true"
-            - name: KOLLA_CONFIG_STRATEGY
-              value: COPY_ALWAYS
             - name: PURGE_AGE
               value: "90"
             name: nova-manage
             securityContext:
               runAsUser: 42436
             volumeMounts:
-            - mountPath: /var/lib/openstack/config
+            - mountPath: /etc/nova/nova.conf
               name: config-data
+              subPath: nova-blank.conf
+            - mountPath: /etc/nova/nova.conf.d/01-nova.conf
+              name: config-data
+              subPath: 01-nova.conf
+            - mountPath: /etc/my.cnf
+              name: config-data
+              subPath: my.cnf
             - mountPath: /var/lib/openstack/bin
               name: scripts
-            - mountPath: /var/lib/kolla/config_files/config.json
-              name: config-data
-              subPath: nova-conductor-dbpurge-config.json
           restartPolicy: OnFailure
           serviceAccount: nova-nova-kuttl
           serviceAccountName: nova-nova-kuttl
@@ -580,31 +577,28 @@ spec:
       template:
         spec:
           containers:
-          - args:
-            - -c
-            - /usr/local/bin/kolla_start
-            command:
-            - /bin/bash
+          - command:
+            - /var/lib/openstack/bin/dbpurge.sh
             env:
             - name: ARCHIVE_AGE
               value: "30"
-            - name: KOLLA_BOOTSTRAP
-              value: "true"
-            - name: KOLLA_CONFIG_STRATEGY
-              value: COPY_ALWAYS
             - name: PURGE_AGE
               value: "90"
             name: nova-manage
             securityContext:
               runAsUser: 42436
             volumeMounts:
-            - mountPath: /var/lib/openstack/config
+            - mountPath: /etc/nova/nova.conf
               name: config-data
+              subPath: nova-blank.conf
+            - mountPath: /etc/nova/nova.conf.d/01-nova.conf
+              name: config-data
+              subPath: 01-nova.conf
+            - mountPath: /etc/my.cnf
+              name: config-data
+              subPath: my.cnf
             - mountPath: /var/lib/openstack/bin
               name: scripts
-            - mountPath: /var/lib/kolla/config_files/config.json
-              name: config-data
-              subPath: nova-conductor-dbpurge-config.json
           restartPolicy: OnFailure
           serviceAccount: nova-nova-kuttl
           serviceAccountName: nova-nova-kuttl
