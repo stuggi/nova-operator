@@ -35,7 +35,11 @@ const (
 
 var (
 	configMode int32 = 0640
-	scriptMode int32 = 0740
+	// scriptMode grants execute to the FSGroup-matched group, not just the
+	// (root-owned, per kubelet) file owner -- scripts are exec'd directly
+	// from this mount now that kolla no longer copies them elsewhere with
+	// its own chmod first.
+	scriptMode int32 = 0750
 )
 
 // GetConfVolumeMounts returns the final-path SubPath mounts for the config
