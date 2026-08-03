@@ -18,10 +18,15 @@ limitations under the License.
 package novacompute
 
 import (
+	"maps"
+	"slices"
+
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
 	affinity "github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
 	env "github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/pod"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/probes"
+	"github.com/openstack-k8s-operators/lib-common/modules/serviceuser"
 	novav1 "github.com/openstack-k8s-operators/nova-operator/api/nova/v1beta1"
 	internalcommon "github.com/openstack-k8s-operators/nova-operator/internal/common"
 	"github.com/openstack-k8s-operators/nova-operator/internal/nova"
@@ -30,7 +35,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 )
 
 // StatefulSet - returns the StatefulSet definition for the nova-compute service
@@ -52,10 +56,7 @@ func StatefulSet(
 		return nil, err
 	}
 
-	args := []string{"-c", nova.KollaServiceCommand}
-
 	envVars := map[string]env.Setter{}
-	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
 	// NOTE(gibi): The statefulset does not use this hash directly. We store it
 	// in the environment to trigger a Pod restart if any input of the
 	// statefulset has changed. The k8s will trigger a restart automatically if
@@ -63,14 +64,14 @@ func StatefulSet(
 	envVars["CONFIG_HASH"] = env.SetValue(configHash)
 	env := env.MergeEnvs([]corev1.EnvVar{}, envVars)
 
+	overwriteKeys := slices.Sorted(maps.Keys(instance.Spec.DefaultConfigOverwrite))
+
 	// create Volume and VolumeMounts
 	volumes := []corev1.Volume{
 		nova.GetConfigVolume(internalcommon.GetServiceConfigSecretName(instance.Name)),
 	}
-	volumeMounts := []corev1.VolumeMount{
-		nova.GetConfigVolumeMount(),
-		nova.GetKollaConfigVolumeMount("nova-compute"),
-	}
+	volumeMounts := nova.GetConfVolumeMounts(instance.Spec.CustomServiceConfig != "")
+	volumeMounts = append(volumeMounts, nova.GetConfigOverwriteVolumeMounts(overwriteKeys, "/etc/nova/provider_config")...)
 
 	// add CA cert if defined
 	if instance.Spec.TLS.CaBundleSecretName != "" {
@@ -96,23 +97,21 @@ func StatefulSet(
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: instance.Spec.ServiceAccount,
+					SecurityContext:    pod.RestrictivePodSecurityContext(serviceuser.NovaUID),
 					Volumes:            volumes,
 					Containers: []corev1.Container{
 						{
 							Name: instance.Name + "-compute",
 							Command: []string{
-								"/bin/bash",
+								"/usr/bin/nova-compute",
 							},
-							Args:  args,
-							Image: instance.Spec.ContainerImage,
-							SecurityContext: &corev1.SecurityContext{
-								RunAsUser: ptr.To(nova.NovaUserID),
-							},
-							Env:           env,
-							VolumeMounts:  volumeMounts,
-							Resources:     instance.Spec.Resources,
-							StartupProbe:  computeProbes.Startup,
-							LivenessProbe: computeProbes.Liveness,
+							Image:           instance.Spec.ContainerImage,
+							SecurityContext: pod.RestrictiveSecurityContext(serviceuser.NovaUID),
+							Env:             env,
+							VolumeMounts:    volumeMounts,
+							Resources:       instance.Spec.Resources,
+							StartupProbe:    computeProbes.Startup,
+							LivenessProbe:   computeProbes.Liveness,
 						},
 					},
 				},

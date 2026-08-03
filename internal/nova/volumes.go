@@ -17,6 +17,9 @@ limitations under the License.
 package nova
 
 import (
+	"fmt"
+	"slices"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -24,6 +27,10 @@ const (
 	scriptVolume = "scripts"
 	configVolume = "config-data"
 	logVolume    = "logs"
+	// RunHttpdVolume is the volume name used for the httpd PID file directory
+	RunHttpdVolume = "run-httpd"
+	// VarLogHttpdVolume is the volume name used for httpd's own logs
+	VarLogHttpdVolume = "var-log-httpd"
 )
 
 var (
@@ -31,22 +38,80 @@ var (
 	scriptMode int32 = 0740
 )
 
-// GetConfigVolumeMount returns a volume mount for Nova configuration files
-func GetConfigVolumeMount() corev1.VolumeMount {
-	return corev1.VolumeMount{
+// GetConfVolumeMounts returns the final-path SubPath mounts for the config
+// snippets shared by every Nova service: nova.conf, nova.conf.d/01-nova.conf,
+// nova.conf.d/02-nova-override.conf (only when the service has a
+// CustomServiceConfig set, since that key is only added to the config Secret
+// in that case), and /etc/my.cnf.
+func GetConfVolumeMounts(hasCustomServiceConfig bool) []corev1.VolumeMount {
+	vm := []corev1.VolumeMount{
+		{
+			Name:      configVolume,
+			MountPath: "/etc/nova/nova.conf",
+			SubPath:   "nova-blank.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      configVolume,
+			MountPath: "/etc/nova/nova.conf.d/01-nova.conf",
+			SubPath:   "01-nova.conf",
+			ReadOnly:  true,
+		},
+	}
+	if hasCustomServiceConfig {
+		vm = append(vm, corev1.VolumeMount{
+			Name:      configVolume,
+			MountPath: "/etc/nova/nova.conf.d/02-nova-override.conf",
+			SubPath:   "02-nova-override.conf",
+			ReadOnly:  true,
+		})
+	}
+	vm = append(vm, corev1.VolumeMount{
 		Name:      configVolume,
-		MountPath: "/var/lib/openstack/config",
-		ReadOnly:  false,
+		MountPath: "/etc/my.cnf",
+		SubPath:   "my.cnf",
+		ReadOnly:  true,
+	})
+	return vm
+}
+
+// GetConfigOverwriteVolumeMounts returns SubPath volume mounts that place
+// each defaultConfigOverwrite key as an individual file under basePath
+// (e.g. /etc/nova/policy.yaml, /etc/nova/api-paste.ini). The overwrite data
+// lives in the same config Secret (merged in via CustomData).
+func GetConfigOverwriteVolumeMounts(overwriteKeys []string, basePath string) []corev1.VolumeMount {
+	mounts := make([]corev1.VolumeMount, 0, len(overwriteKeys))
+	sorted := make([]string, len(overwriteKeys))
+	copy(sorted, overwriteKeys)
+	slices.Sort(sorted)
+	for _, key := range sorted {
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      configVolume,
+			MountPath: fmt.Sprintf("%s/%s", basePath, key),
+			SubPath:   key,
+			ReadOnly:  true,
+		})
+	}
+	return mounts
+}
+
+// GetRunHttpdVolume returns the emptyDir Volume used for the httpd PID file
+func GetRunHttpdVolume() corev1.Volume {
+	return corev1.Volume{
+		Name: RunHttpdVolume,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
 	}
 }
 
-// GetKollaConfigVolumeMount returns a volume mount for Kolla configuration files
-func GetKollaConfigVolumeMount(serviceName string) corev1.VolumeMount {
-	return corev1.VolumeMount{
-		Name:      configVolume,
-		MountPath: "/var/lib/kolla/config_files/config.json",
-		SubPath:   serviceName + "-config.json",
-		ReadOnly:  false,
+// GetVarLogHttpdVolume returns the emptyDir Volume used for httpd's own logs
+func GetVarLogHttpdVolume() corev1.Volume {
+	return corev1.Volume{
+		Name: VarLogHttpdVolume,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
 	}
 }
 

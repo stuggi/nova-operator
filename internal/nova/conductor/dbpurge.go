@@ -12,6 +12,8 @@ import (
 
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/pod"
+	"github.com/openstack-k8s-operators/lib-common/modules/serviceuser"
 	novav1 "github.com/openstack-k8s-operators/nova-operator/api/nova/v1beta1"
 	internalcommon "github.com/openstack-k8s-operators/nova-operator/internal/common"
 	"github.com/openstack-k8s-operators/nova-operator/internal/nova"
@@ -24,12 +26,7 @@ func DBPurgeCronJob(
 	annotations map[string]string,
 	memcached *memcachedv1.Memcached,
 ) *batchv1.CronJob {
-	args := []string{"-c", nova.KollaServiceCommand}
-
 	envVars := map[string]env.Setter{}
-	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
-	envVars["KOLLA_BOOTSTRAP"] = env.SetValue("true")
-
 	envVars["ARCHIVE_AGE"] = env.SetValue(fmt.Sprintf("%d", *instance.Spec.DBPurge.ArchiveAge))
 	envVars["PURGE_AGE"] = env.SetValue(fmt.Sprintf("%d", *instance.Spec.DBPurge.PurgeAge))
 
@@ -39,11 +36,8 @@ func DBPurgeCronJob(
 		nova.GetConfigVolume(internalcommon.GetServiceConfigSecretName(instance.Name)),
 		nova.GetScriptVolume(internalcommon.GetScriptSecretName(instance.Name)),
 	}
-	volumeMounts := []corev1.VolumeMount{
-		nova.GetConfigVolumeMount(),
-		nova.GetScriptVolumeMount(),
-		nova.GetKollaConfigVolumeMount("nova-conductor-dbpurge"),
-	}
+	volumeMounts := nova.GetConfVolumeMounts(instance.Spec.CustomServiceConfig != "")
+	volumeMounts = append(volumeMounts, nova.GetScriptVolumeMount())
 
 	// add CA cert if defined
 	if instance.Spec.TLS.CaBundleSecretName != "" {
@@ -53,8 +47,10 @@ func DBPurgeCronJob(
 
 	// add MTLS cert if defined
 	if memcached.Status.MTLSCert != "" {
+		certMountPath := memcachedv1.CertPathDst
+		keyMountPath := memcachedv1.KeyPathDst
 		volumes = append(volumes, memcached.CreateMTLSVolume())
-		volumeMounts = append(volumeMounts, memcached.CreateMTLSVolumeMounts(nil, nil)...)
+		volumeMounts = append(volumeMounts, memcached.CreateMTLSVolumeMounts(&certMountPath, &keyMountPath)...)
 	}
 
 	// we want to hide the fact that the job is created by the conductor
@@ -83,20 +79,18 @@ func DBPurgeCronJob(
 						Spec: corev1.PodSpec{
 							RestartPolicy:      corev1.RestartPolicyOnFailure,
 							ServiceAccountName: instance.Spec.ServiceAccount,
+							SecurityContext:    pod.RestrictivePodSecurityContext(serviceuser.NovaUID),
 							Volumes:            volumes,
 							Containers: []corev1.Container{
 								{
 									Name: "nova-manage",
 									Command: []string{
-										"/bin/bash",
+										"/var/lib/openstack/bin/dbpurge.sh",
 									},
-									Args:  args,
-									Image: instance.Spec.ContainerImage,
-									SecurityContext: &corev1.SecurityContext{
-										RunAsUser: ptr.To(nova.NovaUserID),
-									},
-									Env:          env,
-									VolumeMounts: volumeMounts,
+									Image:           instance.Spec.ContainerImage,
+									SecurityContext: pod.RestrictiveSecurityContext(serviceuser.NovaUID),
+									Env:             env,
+									VolumeMounts:    volumeMounts,
 								},
 							},
 						},

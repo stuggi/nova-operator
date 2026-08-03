@@ -93,7 +93,7 @@ func (r *NovaReconciler) GetLogger(ctx context.Context) logr.Logger {
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=roles,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=rolebindings,verbs=get;list;watch;create;update;patch
 // service account permissions that are needed to grant permission to the above
-// +kubebuilder:rbac:groups="security.openshift.io",resourceNames=anyuid,resources=securitycontextconstraints,verbs=use
+// +kubebuilder:rbac:groups="security.openshift.io",resourceNames=nonroot-v2,resources=securitycontextconstraints,verbs=use
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete;
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
