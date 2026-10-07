@@ -475,7 +475,7 @@ func (r *PlacementAPIReconciler) ensureServiceExposed(
 	for _, endpointType := range slices.Sorted(maps.Keys(placementEndpoints)) {
 		data := placementEndpoints[endpointType]
 		endpointTypeStr := string(endpointType)
-		endpointName := placementv1.ServicePortName(endpointType)
+		endpointName := placement.ServiceName + "-" + endpointTypeStr
 
 		svcOverride := instance.Spec.Override.Service[endpointType]
 		if svcOverride.EmbeddedLabelsAnnotations == nil {
@@ -497,7 +497,7 @@ func (r *PlacementAPIReconciler) ensureServiceExposed(
 				Labels:    exportLabels,
 				Selector:  serviceLabels,
 				Port: service.GenericServicePort{
-					Name:     endpointName,
+					Name:     endpointTypeStr,
 					Port:     data.Port,
 					Protocol: corev1.ProtocolTCP,
 				},
