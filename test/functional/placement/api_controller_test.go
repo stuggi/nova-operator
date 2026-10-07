@@ -602,8 +602,12 @@ var _ = Describe("PlacementAPI controller", func() {
 
 			public := th.GetService(names.PublicServiceName)
 			Expect(public.Labels["service"]).To(Equal("placement"))
+			Expect(public.Name).To(Equal("placement-public"))
+			Expect(public.Spec.Ports[0].Name).To(Equal("public"))
 			internal := th.GetService(names.InternalServiceName)
 			Expect(internal.Labels["service"]).To(Equal("placement"))
+			Expect(internal.Name).To(Equal("placement-internal"))
+			Expect(internal.Spec.Ports[0].Name).To(Equal("internal"))
 
 			th.ExpectCondition(
 				names.PlacementAPIName,

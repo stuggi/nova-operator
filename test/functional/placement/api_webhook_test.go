@@ -152,7 +152,7 @@ var _ = Describe("PlacementAPI Webhook", func() {
 					"spec": map[string]any{
 						"ports": []any{
 							map[string]any{
-								"name": "placement-public",
+								"name": "public",
 								"port": 13778,
 							},
 						},
@@ -208,7 +208,7 @@ var _ = Describe("PlacementAPI Webhook", func() {
 		Expect(err.Error()).To(
 			ContainSubstring(
 				"invalid: spec.override.service.public.spec.ports[0].name: " +
-					"Invalid value: \"wrong\": must be \"placement-public\""),
+					"Invalid value: \"wrong\": must be \"public\""),
 		)
 	})
 
@@ -220,7 +220,7 @@ var _ = Describe("PlacementAPI Webhook", func() {
 					"spec": map[string]any{
 						"ports": []any{
 							map[string]any{
-								"name": "placement-internal",
+								"name": "internal",
 								"port": 8778,
 							},
 						},
@@ -276,7 +276,7 @@ var _ = Describe("PlacementAPI Webhook", func() {
 		Expect(err.Error()).To(
 			ContainSubstring(
 				"invalid: spec.override.service.internal.spec.ports[0].name: " +
-					"Invalid value: \"wrong\": must be \"placement-internal\""),
+					"Invalid value: \"wrong\": must be \"internal\""),
 		)
 	})
 
@@ -346,7 +346,7 @@ var _ = Describe("PlacementAPI Webhook", func() {
 			Expect(err.Error()).To(
 				ContainSubstring(
 					"invalid: spec.override.service.public.spec.ports[0].name: " +
-						"Invalid value: \"wrong\": must be \"placement-public\""),
+						"Invalid value: \"wrong\": must be \"public\""),
 			)
 		})
 	})
