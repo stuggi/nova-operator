@@ -19,6 +19,7 @@ package placement_test
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
@@ -868,6 +869,21 @@ var _ = Describe("PlacementAPI controller", func() {
 				condition.KeystoneEndpointReadyCondition,
 				corev1.ConditionTrue,
 			)
+		})
+
+		It("renders the public vhost ServerName from endpointURL with the .svc name as ServerAlias", func() {
+			cm := th.GetSecret(names.ConfigMapName)
+			configData := string(cm.Data["httpd.conf"])
+
+			Expect(configData).Should(
+				ContainSubstring("ServerName placement-openstack.apps-crc.testing"))
+			Expect(configData).Should(
+				ContainSubstring("ServerAlias placement-public." + namespace + ".svc"))
+
+			// internal vhost is unchanged: default ServerName, no alias
+			Expect(configData).Should(
+				ContainSubstring("ServerName placement-internal." + namespace + ".svc"))
+			Expect(strings.Count(configData, "ServerAlias")).To(Equal(1))
 		})
 	})
 
