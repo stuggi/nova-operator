@@ -475,7 +475,7 @@ func (r *PlacementAPIReconciler) ensureServiceExposed(
 	for _, endpointType := range slices.Sorted(maps.Keys(placementEndpoints)) {
 		data := placementEndpoints[endpointType]
 		endpointTypeStr := string(endpointType)
-		endpointName := placement.ServiceName + "-" + endpointTypeStr
+		endpointName := placementv1.ServicePortName(endpointType)
 
 		svcOverride := instance.Spec.Override.Service[endpointType]
 		if svcOverride.EmbeddedLabelsAnnotations == nil {
@@ -1306,7 +1306,13 @@ func (r *PlacementAPIReconciler) generateServiceConfigMaps(
 	httpdVhostConfig := map[string]any{}
 	for _, endpt := range []service.Endpoint{service.EndpointInternal, service.EndpointPublic} {
 		endptConfig := map[string]any{}
-		endptConfig["ServerName"] = fmt.Sprintf("placement-%s.%s.svc", endpt.String(), instance.Namespace)
+		defaultName := fmt.Sprintf("placement-%s.%s.svc", endpt.String(), instance.Namespace)
+		serverName, serverAliases, err := service.GetVHostServerName(instance.Spec.Override.Service[endpt], defaultName)
+		if err != nil {
+			return err
+		}
+		endptConfig["ServerName"] = serverName
+		endptConfig["ServerAliases"] = serverAliases
 		endptConfig["TLS"] = false // default TLS to false, and set it below to true if enabled
 		if instance.Spec.TLS.API.Enabled(endpt) {
 			endptConfig["TLS"] = true
