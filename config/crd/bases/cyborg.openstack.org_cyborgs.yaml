@@ -407,6 +407,16 @@ spec:
                                     More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
                                   type: string
                               type: object
+                            tls:
+                              description: TLS overrides the pod-level service certificate
+                                used for this endpoint.
+                              properties:
+                                secretName:
+                                  description: |-
+                                    Name of a Secret in the same namespace as the service, containing tls.crt,
+                                    tls.key and ca.crt for this endpoint's pod-level (service) certificate.
+                                  type: string
+                              type: object
                           type: object
                         description: |-
                           Override configuration for the Service created to serve traffic to the cluster.

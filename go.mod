@@ -12,7 +12,7 @@ require (
 	github.com/onsi/gomega v1.44.0
 	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260917133014-aa9523bc1a12
 	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20260915132739-c1207a97b9a2
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260911152322-92cbe8cb7d0a
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20261001122809-0e19abbc9e47
 	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20260911152322-92cbe8cb7d0a
 	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20260911152322-92cbe8cb7d0a
 	github.com/openstack-k8s-operators/lib-common/modules/users v0.0.0-20260911152322-92cbe8cb7d0a
@@ -95,20 +95,20 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/mod v0.37.0 // indirect
-	golang.org/x/net v0.56.0 // indirect
-	golang.org/x/oauth2 v0.30.0 // indirect
+	golang.org/x/mod v0.40.0 // indirect
+	golang.org/x/net v0.58.0 // indirect
+	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
-	golang.org/x/tools v0.47.0 // indirect
+	golang.org/x/tools v0.49.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250106144421-5f5ef82da422 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/grpc v1.71.1 // indirect
-	google.golang.org/protobuf v1.36.7 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/apiextensions-apiserver v0.33.13 // indirect
@@ -148,4 +148,6 @@ replace k8s.io/component-base => k8s.io/component-base v0.33.13 //allow-merging
 
 replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250627150254-e9823e99808e //allow-merging
 
-replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/stuggi/lib-common/modules/common v0.0.0-20261007153710-d4a62da77ce6
+replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/stuggi/lib-common/modules/common v0.0.0-20261009091302-bf2a65fbbb74
+
+replace github.com/openstack-k8s-operators/infra-operator/apis => github.com/stuggi/infra-operator/apis v0.0.0-20261008130009-1043743d34db
