@@ -891,6 +891,55 @@ var _ = Describe("PlacementAPI controller", func() {
 		})
 	})
 
+	When("A PlacementAPI public endpoint is a LoadBalancer with endpointURL set", func() {
+		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreatePlacementAPISecret(namespace, SecretName))
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(namespace))
+
+			spec := GetDefaultPlacementAPISpec()
+			serviceOverride := map[string]any{}
+			serviceOverride["public"] = map[string]any{
+				"endpointURL": "https://placement.foo.bar:8778",
+				"spec": map[string]any{
+					"type": "LoadBalancer",
+				},
+			}
+
+			spec["override"] = map[string]any{
+				"service": serviceOverride,
+			}
+
+			placementAPI := CreatePlacementAPI(names.PlacementAPIName, spec)
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					namespace,
+					GetPlacementAPI(names.PlacementAPIName).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+
+			mariadb.SimulateMariaDBDatabaseCompleted(names.MariaDBDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(names.MariaDBAccount)
+			th.SimulateLoadBalancerServiceIP(types.NamespacedName{Namespace: namespace, Name: "placement-public"})
+			th.SimulateJobSuccess(names.DBSyncJobName)
+			th.SimulateDeploymentReplicaReady(names.DeploymentName)
+			keystone.SimulateKeystoneServiceReady(names.KeystoneServiceName)
+			keystone.SimulateKeystoneEndpointReady(names.KeystoneEndpointName)
+			DeferCleanup(th.DeleteInstance, placementAPI)
+		})
+
+		It("sets the custom hostname as canonical and the in-cluster name as a CNAME alias", func() {
+			service := th.GetService(types.NamespacedName{Namespace: namespace, Name: "placement-public"})
+			Expect(service.Annotations).To(
+				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "placement.foo.bar"))
+			Expect(service.Annotations).To(
+				HaveKeyWithValue("dnsmasq.network.openstack.org/cnames", "placement-public."+namespace+".svc"))
+		})
+	})
+
 	Context("PlacementAPI is fully deployed", func() {
 		keystoneAPIName := types.NamespacedName{}
 		BeforeEach(func() {

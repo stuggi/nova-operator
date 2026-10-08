@@ -191,8 +191,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/stuggi/infra-operator/apis v0.0.0-20261008130009-1043743d34db h1:2dsivEvcChtIT/ZJzTmHM0YoRy+8Dg+ej7bzfZddczU=
 github.com/stuggi/infra-operator/apis v0.0.0-20261008130009-1043743d34db/go.mod h1:Osp+/zK2zKHPDyAqfrxAT/XY6yTpfpffNV3hu2+4Mbk=
-github.com/stuggi/lib-common/modules/common v0.0.0-20261009091302-bf2a65fbbb74 h1:5uCi27sddaoLapPaw6vZna03JA9IyxkYywbX6BT0unQ=
-github.com/stuggi/lib-common/modules/common v0.0.0-20261009091302-bf2a65fbbb74/go.mod h1:HsTiW0fVqBtJWS+jsfJV3M2i3x7ZXQcXwZU7a07n1AA=
+github.com/stuggi/lib-common/modules/common v0.0.0-20261008123848-950ea3bae570 h1:62jrSH5suWRL8eCryJoWz4Xj7ocuBPqKkSIPX5pnpVY=
+github.com/stuggi/lib-common/modules/common v0.0.0-20261008123848-950ea3bae570/go.mod h1:HsTiW0fVqBtJWS+jsfJV3M2i3x7ZXQcXwZU7a07n1AA=
 github.com/tidwall/gjson v1.18.0 h1:FIDeeyB800efLX89e5a8Y0BNH+LOngJyGrIWxG2FKQY=
 github.com/tidwall/gjson v1.18.0/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/match v1.1.1 h1:+Ho715JplO36QYgwN9PGYNhgZvoUSc9X2c80KVTi+GA=
