@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -530,9 +531,32 @@ func (r *PlacementAPIReconciler) ensureServiceExposed(
 				service.AnnotationIngressCreateKey: "false",
 			})
 			if svc.GetServiceType() == corev1.ServiceTypeLoadBalancer {
-				svc.AddAnnotation(map[string]string{
-					service.AnnotationHostnameKey: svc.GetServiceHostname(), // add annotation to register service name in dnsmasq
-				})
+				// Canonical dnsmasq hostname + optional CNAME alias(es) for this
+				// Service's LoadBalancer IP. When a custom endpointURL is set, its
+				// host becomes the canonical name - so a reverse-DNS lookup against
+				// the public endpoint (e.g. GSSAPI/Kerberos SPN canonicalization)
+				// resolves back to the name the external client actually used -
+				// and the in-cluster name becomes a CNAME alias instead. With no
+				// endpointURL, the in-cluster name stays canonical with no alias,
+				// unchanged from today.
+				dnsHostname, dnsAliases, err := service.GetVHostServerName(svcOverride, svc.GetServiceHostname())
+				if err != nil {
+					instance.Status.Conditions.Set(condition.FalseCondition(
+						condition.CreateServiceReadyCondition,
+						condition.ErrorReason,
+						condition.SeverityWarning,
+						condition.CreateServiceReadyErrorMessage,
+						err.Error()))
+
+					return apiEndpoints, ctrl.Result{}, err
+				}
+				dnsAnnotations := map[string]string{
+					service.AnnotationHostnameKey: dnsHostname, // add annotation to register service name in dnsmasq
+				}
+				if len(dnsAliases) > 0 {
+					dnsAnnotations[service.AnnotationCNAMEsKey] = strings.Join(dnsAliases, ",")
+				}
+				svc.AddAnnotation(dnsAnnotations)
 			}
 		}
 
