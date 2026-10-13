@@ -550,6 +550,13 @@ func (r *PlacementAPIReconciler) ensureServiceExposed(
 
 					return apiEndpoints, ctrl.Result{}, err
 				}
+				// Clear override-provided DNS values before adding the endpoint's
+				// managed values: AddAnnotation merges via MergeStringMaps, which
+				// keeps any existing (user-supplied) value, so a stale hostname/cnames
+				// from the service override would otherwise win over the managed one.
+				svc.RemoveAnnotation(service.AnnotationHostnameKey)
+				svc.RemoveAnnotation(service.AnnotationCNAMEsKey)
+
 				dnsAnnotations := map[string]string{
 					service.AnnotationHostnameKey: dnsHostname, // add annotation to register service name in dnsmasq
 				}
