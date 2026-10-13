@@ -212,6 +212,171 @@ var _ = Describe("PlacementAPI Webhook", func() {
 		)
 	})
 
+	It("accepts a public service override with endpointURL and a matching port", func() {
+		spec := GetDefaultPlacementAPISpec()
+		spec["override"] = map[string]any{
+			"service": map[string]any{
+				"public": map[string]any{
+					"endpointURL": "https://placement.foo.bar:13778",
+					"spec": map[string]any{
+						"ports": []any{
+							map[string]any{
+								"name": "public",
+								"port": 13778,
+							},
+						},
+					},
+				},
+			},
+		}
+		raw := map[string]any{
+			"apiVersion": "placement.openstack.org/v1beta1",
+			"kind":       "PlacementAPI",
+			"metadata": map[string]any{
+				"name":      placementAPIName.Name,
+				"namespace": placementAPIName.Namespace,
+			},
+			"spec": spec,
+		}
+		unstructuredObj := &unstructured.Unstructured{Object: raw}
+		_, err := controllerutil.CreateOrPatch(
+			th.Ctx, th.K8sClient, unstructuredObj, func() error { return nil })
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(th.DeleteInstance, GetPlacementAPI(placementAPIName))
+	})
+
+	It("accepts a public service override with only endpointURL set (no ports[])", func() {
+		spec := GetDefaultPlacementAPISpec()
+		spec["override"] = map[string]any{
+			"service": map[string]any{
+				"public": map[string]any{
+					"endpointURL": "https://placement.foo.bar:13778",
+				},
+			},
+		}
+		raw := map[string]any{
+			"apiVersion": "placement.openstack.org/v1beta1",
+			"kind":       "PlacementAPI",
+			"metadata": map[string]any{
+				"name":      placementAPIName.Name,
+				"namespace": placementAPIName.Namespace,
+			},
+			"spec": spec,
+		}
+		unstructuredObj := &unstructured.Unstructured{Object: raw}
+		_, err := controllerutil.CreateOrPatch(
+			th.Ctx, th.K8sClient, unstructuredObj, func() error { return nil })
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(th.DeleteInstance, GetPlacementAPI(placementAPIName))
+	})
+
+	It("rejects a public service override with endpointURL/port mismatch", func() {
+		spec := GetDefaultPlacementAPISpec()
+		spec["override"] = map[string]any{
+			"service": map[string]any{
+				"public": map[string]any{
+					"endpointURL": "https://placement.foo.bar:13778",
+					"spec": map[string]any{
+						"ports": []any{
+							map[string]any{
+								"name": "public",
+								"port": 5000,
+							},
+						},
+					},
+				},
+			},
+		}
+		raw := map[string]any{
+			"apiVersion": "placement.openstack.org/v1beta1",
+			"kind":       "PlacementAPI",
+			"metadata": map[string]any{
+				"name":      placementAPIName.Name,
+				"namespace": placementAPIName.Namespace,
+			},
+			"spec": spec,
+		}
+		unstructuredObj := &unstructured.Unstructured{Object: raw}
+		_, err := controllerutil.CreateOrPatch(
+			th.Ctx, th.K8sClient, unstructuredObj, func() error { return nil })
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(
+			ContainSubstring(
+				"invalid: spec.override.service.public.spec.ports[0].port: " +
+					"Invalid value: 5000: must match the port in endpointURL \"https://placement.foo.bar:13778\""),
+		)
+	})
+
+	It("accepts a public service override with a port-less https endpointURL matching the scheme default", func() {
+		spec := GetDefaultPlacementAPISpec()
+		spec["override"] = map[string]any{
+			"service": map[string]any{
+				"public": map[string]any{
+					"endpointURL": "https://placement.foo.bar",
+					"spec": map[string]any{
+						"ports": []any{
+							map[string]any{
+								"name": "public",
+								"port": 443,
+							},
+						},
+					},
+				},
+			},
+		}
+		raw := map[string]any{
+			"apiVersion": "placement.openstack.org/v1beta1",
+			"kind":       "PlacementAPI",
+			"metadata": map[string]any{
+				"name":      placementAPIName.Name,
+				"namespace": placementAPIName.Namespace,
+			},
+			"spec": spec,
+		}
+		unstructuredObj := &unstructured.Unstructured{Object: raw}
+		_, err := controllerutil.CreateOrPatch(
+			th.Ctx, th.K8sClient, unstructuredObj, func() error { return nil })
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(th.DeleteInstance, GetPlacementAPI(placementAPIName))
+	})
+
+	It("rejects a public service override with a port-less https endpointURL disagreeing with ports[]", func() {
+		spec := GetDefaultPlacementAPISpec()
+		spec["override"] = map[string]any{
+			"service": map[string]any{
+				"public": map[string]any{
+					"endpointURL": "https://placement.foo.bar",
+					"spec": map[string]any{
+						"ports": []any{
+							map[string]any{
+								"name": "public",
+								"port": 13778,
+							},
+						},
+					},
+				},
+			},
+		}
+		raw := map[string]any{
+			"apiVersion": "placement.openstack.org/v1beta1",
+			"kind":       "PlacementAPI",
+			"metadata": map[string]any{
+				"name":      placementAPIName.Name,
+				"namespace": placementAPIName.Namespace,
+			},
+			"spec": spec,
+		}
+		unstructuredObj := &unstructured.Unstructured{Object: raw}
+		_, err := controllerutil.CreateOrPatch(
+			th.Ctx, th.K8sClient, unstructuredObj, func() error { return nil })
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(
+			ContainSubstring(
+				"invalid: spec.override.service.public.spec.ports[0].port: " +
+					"Invalid value: 13778: must match the port in endpointURL \"https://placement.foo.bar\""),
+		)
+	})
+
 	It("accepts an internal service override port with the valid name", func() {
 		spec := GetDefaultPlacementAPISpec()
 		spec["override"] = map[string]any{
