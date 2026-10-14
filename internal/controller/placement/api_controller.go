@@ -531,10 +531,10 @@ func (r *PlacementAPIReconciler) ensureServiceExposed(
 				service.AnnotationIngressCreateKey: "false",
 			})
 			if svc.GetServiceType() == corev1.ServiceTypeLoadBalancer {
-				// Canonical dnsmasq hostname + optional CNAME alias(es) for this
-				// Service's LoadBalancer IP. When a custom endpointURL is set, its
+				// Canonical dnsmasq hostname + optional CNAME alias(es) for the
+				// IP of this LoadBalancer Service. When a custom endpointURL is set, its
 				// host becomes the canonical name - so a reverse-DNS lookup against
-				// the public endpoint (e.g. GSSAPI/Kerberos SPN canonicalization)
+				// either endpoint (e.g. GSSAPI/Kerberos SPN canonicalization)
 				// resolves back to the name the external client actually used -
 				// and the in-cluster name becomes a CNAME alias instead. With no
 				// endpointURL, the in-cluster name stays canonical with no alias,
@@ -555,6 +555,8 @@ func (r *PlacementAPIReconciler) ensureServiceExposed(
 				}
 				if len(dnsAliases) > 0 {
 					dnsAnnotations[service.AnnotationCNAMEsKey] = strings.Join(dnsAliases, ",")
+				} else {
+					svc.RemoveAnnotation(service.AnnotationCNAMEsKey)
 				}
 				svc.AddAnnotation(dnsAnnotations)
 			}
