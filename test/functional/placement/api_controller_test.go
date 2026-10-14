@@ -27,6 +27,7 @@ import (
 	//revive:disable-next-line:dot-imports
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/clusterdns"
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	. "github.com/openstack-k8s-operators/lib-common/modules/common/test/helpers"
 	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
@@ -748,10 +749,9 @@ var _ = Describe("PlacementAPI controller", func() {
 			serviceOverride["internal"] = map[string]any{
 				"metadata": map[string]map[string]string{
 					"annotations": {
-						"dnsmasq.network.openstack.org/hostname": "placement-internal.openstack.svc",
-						"metallb.universe.tf/address-pool":       "osp-internalapi",
-						"metallb.universe.tf/allow-shared-ip":    "osp-internalapi",
-						"metallb.universe.tf/loadBalancerIPs":    "internal-lb-ip-1,internal-lb-ip-2",
+						"metallb.universe.tf/address-pool":    "osp-internalapi",
+						"metallb.universe.tf/allow-shared-ip": "osp-internalapi",
+						"metallb.universe.tf/loadBalancerIPs": "internal-lb-ip-1,internal-lb-ip-2",
 					},
 					"labels": {
 						"internal": "true",
@@ -808,7 +808,7 @@ var _ = Describe("PlacementAPI controller", func() {
 			// gets a LoadBalancer Service with MetalLB annotations
 			service := th.GetService(types.NamespacedName{Namespace: namespace, Name: "placement-internal"})
 			Expect(service.Annotations).To(
-				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "placement-internal.openstack.svc"))
+				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "placement-internal."+namespace+".svc"))
 			Expect(service.Annotations).To(
 				HaveKeyWithValue("metallb.universe.tf/address-pool", "osp-internalapi"))
 			Expect(service.Annotations).To(
@@ -823,6 +823,43 @@ var _ = Describe("PlacementAPI controller", func() {
 				corev1.ConditionTrue,
 			)
 		})
+		It("uses an internal endpointURL and keeps its FQDN CNAME when cleared to empty", func() {
+			endpointURL := "http://placement-internal.example.test:8778"
+			Eventually(func(g Gomega) {
+				api := GetPlacementAPI(names.PlacementAPIName)
+				override := api.Spec.Override.Service["internal"]
+				override.EndpointURL = &endpointURL
+				api.Spec.Override.Service["internal"] = override
+				g.Expect(k8sClient.Update(ctx, api)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				svc := th.GetService(types.NamespacedName{Namespace: namespace, Name: "placement-internal"})
+				g.Expect(svc.Annotations).To(HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "placement-internal.example.test"))
+				g.Expect(svc.Annotations).To(HaveKeyWithValue("dnsmasq.network.openstack.org/cnames",
+					fmt.Sprintf("placement-internal.%s.svc,placement-internal.%s.svc.%s", namespace, namespace, clusterdns.GetDNSClusterDomain())))
+				g.Expect(string(th.GetSecret(names.ConfigMapName).Data["httpd.conf"])).To(ContainSubstring("ServerName placement-internal.example.test"))
+			}, timeout, interval).Should(Succeed())
+
+			emptyURL := ""
+			Eventually(func(g Gomega) {
+				api := GetPlacementAPI(names.PlacementAPIName)
+				override := api.Spec.Override.Service["internal"]
+				override.EndpointURL = &emptyURL
+				api.Spec.Override.Service["internal"] = override
+				g.Expect(k8sClient.Update(ctx, api)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				svc := th.GetService(types.NamespacedName{Namespace: namespace, Name: "placement-internal"})
+				g.Expect(svc.Annotations).To(HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "placement-internal."+namespace+".svc"))
+				g.Expect(svc.Annotations).To(HaveKeyWithValue("dnsmasq.network.openstack.org/cnames",
+					fmt.Sprintf("placement-internal.%s.svc.%s", namespace, clusterdns.GetDNSClusterDomain())))
+				g.Expect(string(th.GetSecret(names.ConfigMapName).Data["httpd.conf"])).To(ContainSubstring("ServerName placement-internal." + namespace + ".svc"))
+				g.Expect(string(th.GetSecret(names.ConfigMapName).Data["httpd.conf"])).To(ContainSubstring(fmt.Sprintf("ServerAlias placement-internal.%s.svc.%s", namespace, clusterdns.GetDNSClusterDomain())))
+			}, timeout, interval).Should(Succeed())
+		})
+
 	})
 
 	When("A PlacementAPI is created with service override endpointURL set", func() {
@@ -875,7 +912,7 @@ var _ = Describe("PlacementAPI controller", func() {
 			)
 		})
 
-		It("renders the public vhost ServerName from endpointURL with the .svc name as ServerAlias", func() {
+		It("renders the public vhost ServerName from endpointURL with service aliases", func() {
 			cm := th.GetSecret(names.ConfigMapName)
 			configData := string(cm.Data["httpd.conf"])
 
@@ -884,10 +921,14 @@ var _ = Describe("PlacementAPI controller", func() {
 			Expect(configData).Should(
 				ContainSubstring("ServerAlias placement-public." + namespace + ".svc"))
 
-			// internal vhost is unchanged: default ServerName, no alias
+			// Internal vhost keeps the short name canonical and adds its cluster FQDN as an alias.
 			Expect(configData).Should(
 				ContainSubstring("ServerName placement-internal." + namespace + ".svc"))
-			Expect(strings.Count(configData, "ServerAlias")).To(Equal(1))
+			Expect(configData).Should(
+				ContainSubstring(fmt.Sprintf("ServerAlias placement-public.%s.svc.%s", namespace, clusterdns.GetDNSClusterDomain())))
+			Expect(configData).Should(
+				ContainSubstring(fmt.Sprintf("ServerAlias placement-internal.%s.svc.%s", namespace, clusterdns.GetDNSClusterDomain())))
+			Expect(strings.Count(configData, "ServerAlias")).To(Equal(3))
 		})
 	})
 
@@ -936,8 +977,31 @@ var _ = Describe("PlacementAPI controller", func() {
 			Expect(service.Annotations).To(
 				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "placement.foo.bar"))
 			Expect(service.Annotations).To(
-				HaveKeyWithValue("dnsmasq.network.openstack.org/cnames", "placement-public."+namespace+".svc"))
+				HaveKeyWithValue("dnsmasq.network.openstack.org/cnames",
+					fmt.Sprintf("placement-public.%s.svc,placement-public.%s.svc.%s", namespace, namespace, clusterdns.GetDNSClusterDomain())))
 		})
+		It("removes the CNAME when endpointURL is cleared", func() {
+			Eventually(func(g Gomega) {
+				svc := th.GetService(types.NamespacedName{Namespace: namespace, Name: "placement-public"})
+				g.Expect(svc.Annotations).To(HaveKey("dnsmasq.network.openstack.org/cnames"))
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				api := GetPlacementAPI(names.PlacementAPIName)
+				override := api.Spec.Override.Service["public"]
+				override.EndpointURL = nil
+				api.Spec.Override.Service["public"] = override
+				g.Expect(k8sClient.Update(ctx, api)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				svc := th.GetService(types.NamespacedName{Namespace: namespace, Name: "placement-public"})
+				g.Expect(svc.Annotations).To(HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "placement-public."+namespace+".svc"))
+				g.Expect(svc.Annotations).To(HaveKeyWithValue("dnsmasq.network.openstack.org/cnames",
+					fmt.Sprintf("placement-public.%s.svc.%s", namespace, clusterdns.GetDNSClusterDomain())))
+			}, timeout, interval).Should(Succeed())
+		})
+
 	})
 
 	Context("PlacementAPI is fully deployed", func() {
