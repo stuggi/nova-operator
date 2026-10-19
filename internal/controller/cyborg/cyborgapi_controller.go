@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -428,11 +429,17 @@ func (r *CyborgAPIReconciler) generateServiceConfig(
 	// Build per-endpoint VirtualHost parameters for the Apache WSGI config
 	httpdVhostConfig := map[string]any{}
 	for _, endpt := range []libservice.Endpoint{libservice.EndpointInternal, libservice.EndpointPublic} {
+		defaultName := fmt.Sprintf("%s-%s.%s.svc", cyborgservice.ServiceName, endpt.String(), instance.Namespace)
+		serverName, serverAliases, err := libservice.GetVHostServerName(instance.Spec.Override.Service[endpt], defaultName)
+		if err != nil {
+			return err
+		}
 		endptConfig := map[string]any{
-			"ServerName": fmt.Sprintf("%s-%s.%s.svc", cyborgservice.ServiceName, endpt.String(), instance.Namespace),
-			"Port":       cyborgservice.CyborgPublicPort,
-			"TLS":        false,
-			"TimeOut":    *instance.Spec.APITimeout,
+			"ServerName":    serverName,
+			"ServerAliases": serverAliases,
+			"Port":          cyborgservice.CyborgPublicPort,
+			"TLS":           false,
+			"TimeOut":       *instance.Spec.APITimeout,
 		}
 		if instance.Spec.TLS.API.Enabled(endpt) {
 			endptConfig["TLS"] = true
@@ -506,7 +513,7 @@ func (r *CyborgAPIReconciler) ensureServiceExposed(
 				Labels:    exportLabels,
 				Selector:  serviceLabels,
 				Port: libservice.GenericServicePort{
-					Name:     endpointName,
+					Name:     endpointTypeStr,
 					Port:     data.Port,
 					Protocol: corev1.ProtocolTCP,
 				},
@@ -538,9 +545,29 @@ func (r *CyborgAPIReconciler) ensureServiceExposed(
 				libservice.AnnotationIngressCreateKey: "false",
 			})
 			if svc.GetServiceType() == corev1.ServiceTypeLoadBalancer {
-				svc.AddAnnotation(map[string]string{
-					libservice.AnnotationHostnameKey: svc.GetServiceHostname(),
-				})
+				dnsHostname, dnsAliases, err := libservice.GetVHostServerName(svcOverride, svc.GetServiceHostname())
+				if err != nil {
+					instance.Status.Conditions.Set(condition.FalseCondition(
+						condition.CreateServiceReadyCondition,
+						condition.ErrorReason,
+						condition.SeverityWarning,
+						condition.CreateServiceReadyErrorMessage,
+						err.Error(),
+					))
+					return nil, ctrl.Result{}, err
+				}
+				svc.RemoveAnnotation(libservice.AnnotationHostnameKey)
+				svc.RemoveAnnotation(libservice.AnnotationCNAMEsKey)
+
+				dnsAnnotations := map[string]string{
+					libservice.AnnotationHostnameKey: dnsHostname,
+				}
+				if len(dnsAliases) > 0 {
+					dnsAnnotations[libservice.AnnotationCNAMEsKey] = strings.Join(dnsAliases, ",")
+				} else {
+					svc.RemoveAnnotation(libservice.AnnotationCNAMEsKey)
+				}
+				svc.AddAnnotation(dnsAnnotations)
 			}
 		}
 
