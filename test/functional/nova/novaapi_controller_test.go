@@ -30,7 +30,9 @@ import (
 
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/clusterdns"
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	commonservice "github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 	novav1 "github.com/openstack-k8s-operators/nova-operator/api/nova/v1beta1"
@@ -482,8 +484,12 @@ endpoint_service_type = compute`))
 				corev1.ConditionTrue,
 			)
 			public := th.GetService(novaNames.PublicNovaServiceName)
+			Expect(public.Name).To(Equal("nova-public"))
+			Expect(public.Spec.Ports[0].Name).To(Equal("public"))
 			Expect(public.Labels["service"]).To(Equal("nova-api"))
 			internal := th.GetService(novaNames.InternalNovaServiceName)
+			Expect(internal.Name).To(Equal("nova-internal"))
+			Expect(internal.Spec.Ports[0].Name).To(Equal("internal"))
 			Expect(internal.Labels["service"]).To(Equal("nova-api"))
 		})
 
@@ -744,7 +750,9 @@ var _ = Describe("NovaAPI controller", func() {
 			// gets a LoadBalancer Service with MetalLB annotations
 			service := th.GetService(novaNames.InternalNovaServiceName)
 			Expect(service.Annotations).To(
-				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "nova-internal.openstack.svc"))
+				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "nova-internal."+novaNames.Namespace+".svc"))
+			Expect(service.Annotations).To(HaveKeyWithValue(commonservice.AnnotationCNAMEsKey,
+				"nova-internal."+novaNames.Namespace+".svc."+clusterdns.GetDNSClusterDomain()))
 			Expect(service.Annotations).To(
 				HaveKeyWithValue("metallb.universe.tf/address-pool", "osp-internalapi"))
 			Expect(service.Annotations).To(
@@ -764,6 +772,10 @@ var _ = Describe("NovaAPI controller", func() {
 				HaveKeyWithValue("service", "nova-api"))
 			Expect(service.Spec.Type).To(Equal(corev1.ServiceTypeClusterIP))
 
+			httpd := string(th.GetSecret(novaNames.APIConfigDataName).Data["httpd.conf"])
+			Expect(httpd).To(ContainSubstring("ServerName nova-api-" + novaNames.APIName.Namespace + ".apps-crc.testing"))
+			Expect(httpd).To(ContainSubstring("ServerAlias nova-public." + novaNames.APIName.Namespace + ".svc"))
+
 			// it registers the endpointURL as the public endpoint and svc
 			// for the internal
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(types.NamespacedName{Namespace: novaNames.APIName.Namespace, Name: "nova"})
@@ -778,6 +790,7 @@ var _ = Describe("NovaAPI controller", func() {
 				corev1.ConditionTrue,
 			)
 		})
+
 	})
 
 	When("NovaAPI is created with service override with no endpointURL set", func() {
@@ -837,8 +850,10 @@ var _ = Describe("NovaAPI controller", func() {
 			// As the internal endpoint has service override configured it
 			// gets a LoadBalancer Service with MetalLB annotations
 			service := th.GetService(novaNames.InternalNovaServiceName)
+			Expect(service.Annotations).To(HaveKeyWithValue(commonservice.AnnotationCNAMEsKey,
+				"nova-internal."+novaNames.Namespace+".svc."+clusterdns.GetDNSClusterDomain()))
 			Expect(service.Annotations).To(
-				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "nova-internal.openstack.svc"))
+				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "nova-internal."+novaNames.Namespace+".svc"))
 			Expect(service.Annotations).To(
 				HaveKeyWithValue("metallb.universe.tf/address-pool", "osp-internalapi"))
 			Expect(service.Annotations).To(
@@ -849,8 +864,10 @@ var _ = Describe("NovaAPI controller", func() {
 			// As the public endpoint has service override configured it
 			// gets a LoadBalancer Service with MetalLB annotations
 			service = th.GetService(novaNames.PublicNovaServiceName)
+			Expect(service.Annotations).To(HaveKeyWithValue(commonservice.AnnotationCNAMEsKey,
+				"nova-public."+novaNames.Namespace+".svc."+clusterdns.GetDNSClusterDomain()))
 			Expect(service.Annotations).To(
-				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "nova-public.openstack.svc"))
+				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "nova-public."+novaNames.Namespace+".svc"))
 			Expect(service.Annotations).To(
 				HaveKeyWithValue("metallb.universe.tf/address-pool", "osp-internalapi"))
 			Expect(service.Annotations).To(
@@ -874,6 +891,78 @@ var _ = Describe("NovaAPI controller", func() {
 				condition.ReadyCondition,
 				corev1.ConditionTrue,
 			)
+		})
+		It("uses custom endpoint hosts for both LoadBalancer services and removes stale CNAMEs", func() {
+			th.SimulateStatefulSetReplicaReady(novaNames.APIStatefulSetName)
+			th.SimulateLoadBalancerServiceIP(novaNames.PublicNovaServiceName)
+			th.SimulateLoadBalancerServiceIP(novaNames.InternalNovaServiceName)
+			keystone.SimulateKeystoneEndpointReady(novaNames.APIKeystoneEndpointName)
+
+			publicHost := "nova-public.example.org"
+			internalHost := "nova-internal.example.org"
+			publicURL := "http://" + publicHost
+			internalURL := "http://" + internalHost
+			Eventually(func(g Gomega) {
+				api := GetNovaAPI(novaNames.APIName)
+				public := api.Spec.Override.Service[commonservice.EndpointPublic]
+				public.EndpointURL = &publicURL
+				api.Spec.Override.Service[commonservice.EndpointPublic] = public
+				internal := api.Spec.Override.Service[commonservice.EndpointInternal]
+				internal.EndpointURL = &internalURL
+				api.Spec.Override.Service[commonservice.EndpointInternal] = internal
+				g.Expect(k8sClient.Update(ctx, api)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+			Eventually(func(g Gomega) {
+				httpd := string(th.GetSecret(novaNames.APIConfigDataName).Data["httpd.conf"])
+				g.Expect(httpd).To(ContainSubstring("ServerName " + publicHost))
+				g.Expect(httpd).To(ContainSubstring("ServerName " + internalHost))
+			}, timeout, interval).Should(Succeed())
+			th.SimulateStatefulSetReplicaReady(novaNames.APIStatefulSetName)
+
+			Eventually(func(g Gomega) {
+				for _, endpoint := range []struct{ name, host, port string }{
+					{"nova-public", publicHost, "public"},
+					{"nova-internal", internalHost, "internal"},
+				} {
+					svc := th.GetService(types.NamespacedName{Name: endpoint.name, Namespace: novaNames.Namespace})
+					g.Expect(svc.Name).To(Equal(endpoint.name))
+					g.Expect(svc.Spec.Ports[0].Name).To(Equal(endpoint.port))
+					g.Expect(svc.Annotations).To(HaveKeyWithValue(commonservice.AnnotationHostnameKey, endpoint.host))
+					g.Expect(svc.Annotations[commonservice.AnnotationCNAMEsKey]).To(ContainSubstring(endpoint.name + "." + novaNames.Namespace + ".svc"))
+				}
+				httpd := string(th.GetSecret(novaNames.APIConfigDataName).Data["httpd.conf"])
+				g.Expect(httpd).To(ContainSubstring("ServerName " + publicHost))
+				g.Expect(httpd).To(ContainSubstring("ServerAlias nova-public." + novaNames.Namespace + ".svc"))
+				g.Expect(httpd).To(ContainSubstring("ServerName " + internalHost))
+				g.Expect(httpd).To(ContainSubstring("ServerAlias nova-internal." + novaNames.Namespace + ".svc"))
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				api := GetNovaAPI(novaNames.APIName)
+				internal := api.Spec.Override.Service[commonservice.EndpointInternal]
+				internal.EndpointURL = nil
+				api.Spec.Override.Service[commonservice.EndpointInternal] = internal
+				public := api.Spec.Override.Service[commonservice.EndpointPublic]
+				sameHostURL := "http://nova-public." + novaNames.Namespace + ".svc"
+				public.EndpointURL = &sameHostURL
+				api.Spec.Override.Service[commonservice.EndpointPublic] = public
+				g.Expect(k8sClient.Update(ctx, api)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+			Eventually(func(g Gomega) {
+				httpd := string(th.GetSecret(novaNames.APIConfigDataName).Data["httpd.conf"])
+				g.Expect(httpd).To(ContainSubstring("ServerName nova-public." + novaNames.Namespace + ".svc"))
+				g.Expect(httpd).To(ContainSubstring("ServerName nova-internal." + novaNames.Namespace + ".svc"))
+			}, timeout, interval).Should(Succeed())
+			th.SimulateStatefulSetReplicaReady(novaNames.APIStatefulSetName)
+
+			Eventually(func(g Gomega) {
+				for _, endpoint := range []string{"nova-public", "nova-internal"} {
+					svc := th.GetService(types.NamespacedName{Name: endpoint, Namespace: novaNames.Namespace})
+					g.Expect(svc.Annotations).To(HaveKeyWithValue(commonservice.AnnotationHostnameKey, endpoint+"."+novaNames.Namespace+".svc"))
+					g.Expect(svc.Annotations).To(HaveKeyWithValue(commonservice.AnnotationCNAMEsKey,
+						endpoint+"."+novaNames.Namespace+".svc."+clusterdns.GetDNSClusterDomain()))
+				}
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"strings"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -522,7 +523,13 @@ func (r *NovaAPIReconciler) generateConfigs(
 	httpdVhostConfig := map[string]any{}
 	for _, endpt := range []service.Endpoint{service.EndpointInternal, service.EndpointPublic} {
 		endptConfig := map[string]any{}
-		endptConfig["ServerName"] = fmt.Sprintf("nova-%s.%s.svc", endpt.String(), instance.Namespace)
+		defaultName := fmt.Sprintf("nova-%s.%s.svc", endpt.String(), instance.Namespace)
+		serverName, serverAliases, err := service.GetVHostServerName(instance.Spec.Override.Service[endpt], defaultName)
+		if err != nil {
+			return err
+		}
+		endptConfig["ServerName"] = serverName
+		endptConfig["ServerAliases"] = serverAliases
 		endptConfig["tls"] = false // default TLS to false, and set it below to true if enabled
 		endptConfig["TimeOut"] = instance.Spec.APITimeout
 		if instance.Spec.TLS.API.Enabled(endpt) {
@@ -738,7 +745,7 @@ func (r *NovaAPIReconciler) ensureServiceExposed(
 				Labels:    exportLabels,
 				Selector:  getAPIServiceLabels(),
 				Port: service.GenericServicePort{
-					Name:     endpointName,
+					Name:     endpointTypeStr,
 					Port:     data.Port,
 					Protocol: corev1.ProtocolTCP,
 				},
@@ -771,9 +778,39 @@ func (r *NovaAPIReconciler) ensureServiceExposed(
 				service.AnnotationIngressCreateKey: "false",
 			})
 			if svc.GetServiceType() == corev1.ServiceTypeLoadBalancer {
-				svc.AddAnnotation(map[string]string{
-					service.AnnotationHostnameKey: svc.GetServiceHostname(), // add annotation to register service name in dnsmasq
-				})
+				// Canonical dnsmasq hostname + optional CNAME alias(es) for this
+				// Service's LoadBalancer IP. When a custom endpointURL is set, its
+				// host becomes the canonical name - so a reverse-DNS lookup against
+				// the public endpoint resolves back to the name the external client actually used -
+				// and both in-cluster names become CNAME aliases instead. Without an
+				// endpointURL, the short in-cluster name stays canonical with its FQDN as alias.
+				dnsHostname, dnsAliases, err := service.GetVHostServerName(svcOverride, svc.GetServiceHostname())
+				if err != nil {
+					instance.Status.Conditions.Set(condition.FalseCondition(
+						condition.CreateServiceReadyCondition,
+						condition.ErrorReason,
+						condition.SeverityWarning,
+						condition.CreateServiceReadyErrorMessage,
+						err.Error()))
+
+					return nil, ctrl.Result{}, err
+				}
+				// Clear override-provided DNS values before adding the endpoint's
+				// managed values: AddAnnotation merges via MergeStringMaps, which
+				// keeps any existing (user-supplied) value, so a stale hostname/cnames
+				// from the service override would otherwise win over the managed one.
+				svc.RemoveAnnotation(service.AnnotationHostnameKey)
+				svc.RemoveAnnotation(service.AnnotationCNAMEsKey)
+
+				dnsAnnotations := map[string]string{
+					service.AnnotationHostnameKey: dnsHostname, // add annotation to register service name in dnsmasq
+				}
+				if len(dnsAliases) > 0 {
+					dnsAnnotations[service.AnnotationCNAMEsKey] = strings.Join(dnsAliases, ",")
+				} else {
+					svc.RemoveAnnotation(service.AnnotationCNAMEsKey)
+				}
+				svc.AddAnnotation(dnsAnnotations)
 			}
 		}
 
