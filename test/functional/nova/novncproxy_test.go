@@ -26,7 +26,9 @@ import (
 
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/clusterdns"
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	commonservice "github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 	novav1 "github.com/openstack-k8s-operators/nova-operator/api/nova/v1beta1"
@@ -304,6 +306,9 @@ var _ = Describe("NovaNoVNCProxy controller", func() {
 				service := th.GetService(types.NamespacedName{Namespace: cell1.NoVNCProxyName.Namespace, Name: "nova-novncproxy-cell1-public"})
 				Expect(service.Labels["service"]).To(Equal("nova-novncproxy"))
 				Expect(service.Labels["cell"]).To(Equal("cell1"))
+				// Service object name stays per-cell; the port name is the bare "public" endpoint string.
+				Expect(service.Name).To(Equal("nova-novncproxy-cell1-public"))
+				Expect(service.Spec.Ports[0].Name).To(Equal("public"))
 				// for novnc we only expose a public service intentionally
 				th.AssertServiceDoesNotExist(types.NamespacedName{Namespace: cell1.NoVNCProxyName.Namespace, Name: "nova-novncproxy-cell1-internal"})
 			})
@@ -568,11 +573,16 @@ var _ = Describe("NovaNoVNCProxy controller", func() {
 
 			// As the endpoint has service override configured it
 			// gets a LoadBalancer Service with MetalLB annotations
+			inClusterName := "nova-novncproxy-cell1-public." + cell1.NoVNCProxyName.Namespace + ".svc"
 			service := th.GetService(types.NamespacedName{Namespace: cell1.NoVNCProxyName.Namespace, Name: "nova-novncproxy-cell1-public"})
 			Expect(service.Annotations).To(
 				HaveKeyWithValue("core.openstack.org/ingress_create", "false"))
+			// With no endpointURL, the managed in-cluster name is canonical (overriding
+			// the override-supplied hostname) with its cluster-domain FQDN as the CNAME.
 			Expect(service.Annotations).To(
-				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "nova-novncproxy-cell1-public.openstack.svc"))
+				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", inClusterName))
+			Expect(service.Annotations).To(
+				HaveKeyWithValue(commonservice.AnnotationCNAMEsKey, inClusterName+"."+clusterdns.GetDNSClusterDomain()))
 			Expect(service.Annotations).To(
 				HaveKeyWithValue("metallb.universe.tf/address-pool", "osp-internalapi"))
 			Expect(service.Annotations).To(
@@ -589,6 +599,57 @@ var _ = Describe("NovaNoVNCProxy controller", func() {
 				condition.ReadyCondition,
 				corev1.ConditionTrue,
 			)
+		})
+	})
+
+	When("NovaNoVNCProxy is created with service override with endpointURL set on a LoadBalancer", func() {
+		publicHost := "nova-novncproxy-cell1.example.org"
+		publicURL := "http://" + publicHost
+
+		BeforeEach(func() {
+			DeferCleanup(
+				k8sClient.Delete, ctx, CreateDefaultCellInternalSecret(cell1))
+
+			spec := GetDefaultNovaNoVNCProxySpec(cell1)
+			spec["override"] = map[string]any{
+				"service": map[string]any{
+					"endpointURL": publicURL,
+					"spec":        map[string]any{"type": "LoadBalancer"},
+				},
+			}
+			noVNC := CreateNovaNoVNCProxy(cell1.NoVNCProxyName, spec)
+			DeferCleanup(th.DeleteInstance, noVNC)
+		})
+
+		It("uses the custom endpoint host as the canonical name and swaps CNAMEs when cleared", func() {
+			svcName := types.NamespacedName{Namespace: cell1.NoVNCProxyName.Namespace, Name: "nova-novncproxy-cell1-public"}
+			inClusterName := "nova-novncproxy-cell1-public." + cell1.NoVNCProxyName.Namespace + ".svc"
+
+			th.SimulateLoadBalancerServiceIP(svcName)
+			th.SimulateStatefulSetReplicaReady(cell1.NoVNCProxyStatefulSetName)
+
+			// custom endpointURL: host is canonical, in-cluster name is a CNAME alias
+			Eventually(func(g Gomega) {
+				service := th.GetService(svcName)
+				g.Expect(service.Spec.Ports[0].Name).To(Equal("public"))
+				g.Expect(service.Annotations).To(HaveKeyWithValue(commonservice.AnnotationHostnameKey, publicHost))
+				g.Expect(service.Annotations[commonservice.AnnotationCNAMEsKey]).To(ContainSubstring(inClusterName))
+			}, timeout, interval).Should(Succeed())
+
+			// clearing the endpointURL restores the in-cluster name as canonical with
+			// its FQDN as the only CNAME - no stale custom host left behind
+			Eventually(func(g Gomega) {
+				noVNC := GetNovaNoVNCProxy(cell1.NoVNCProxyName)
+				noVNC.Spec.Override.Service.EndpointURL = nil
+				g.Expect(k8sClient.Update(ctx, noVNC)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				service := th.GetService(svcName)
+				g.Expect(service.Annotations).To(HaveKeyWithValue(commonservice.AnnotationHostnameKey, inClusterName))
+				g.Expect(service.Annotations).To(HaveKeyWithValue(commonservice.AnnotationCNAMEsKey,
+					inClusterName+"."+clusterdns.GetDNSClusterDomain()))
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 

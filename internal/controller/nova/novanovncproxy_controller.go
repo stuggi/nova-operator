@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -691,7 +692,10 @@ func (r *NovaNoVNCProxyReconciler) ensureServiceExposed(
 			Labels:    exportLabels,
 			Selector:  getNoVNCProxyServiceLabels(instance.Spec.CellName),
 			Port: service.GenericServicePort{
-				Name:     serviceName,
+				// Service object name stays per-cell (serviceName); the port name is
+				// the bare endpoint string so a service override can address it by
+				// the canonical "public" name.
+				Name:     endpointTypeStr,
 				Port:     novncproxy.NoVNCProxyPort,
 				Protocol: corev1.ProtocolTCP,
 			},
@@ -724,9 +728,40 @@ func (r *NovaNoVNCProxyReconciler) ensureServiceExposed(
 			service.AnnotationIngressCreateKey: "false",
 		})
 		if svc.GetServiceType() == corev1.ServiceTypeLoadBalancer {
-			svc.AddAnnotation(map[string]string{
-				service.AnnotationHostnameKey: svc.GetServiceHostname(), // add annotation to register service name in dnsmasq
-			})
+			// Canonical dnsmasq hostname + optional CNAME alias(es) for this
+			// Service's LoadBalancer IP. When a custom endpointURL is set, its
+			// host becomes the canonical name - so a reverse-DNS lookup against
+			// the public endpoint resolves back to the name the external client
+			// actually used - and the in-cluster name becomes a CNAME alias
+			// instead. Without an endpointURL, the short in-cluster name stays
+			// canonical with its FQDN as alias.
+			dnsHostname, dnsAliases, err := service.GetVHostServerName(*svcOverride, svc.GetServiceHostname())
+			if err != nil {
+				instance.Status.Conditions.Set(condition.FalseCondition(
+					condition.CreateServiceReadyCondition,
+					condition.ErrorReason,
+					condition.SeverityWarning,
+					condition.CreateServiceReadyErrorMessage,
+					err.Error()))
+
+				return ctrl.Result{}, err
+			}
+			// Clear override-provided DNS values before adding the managed ones:
+			// AddAnnotation merges via MergeStringMaps, which keeps any existing
+			// (user-supplied) value, so a stale hostname/cnames from the service
+			// override would otherwise win over the managed one.
+			svc.RemoveAnnotation(service.AnnotationHostnameKey)
+			svc.RemoveAnnotation(service.AnnotationCNAMEsKey)
+
+			dnsAnnotations := map[string]string{
+				service.AnnotationHostnameKey: dnsHostname, // add annotation to register service name in dnsmasq
+			}
+			if len(dnsAliases) > 0 {
+				dnsAnnotations[service.AnnotationCNAMEsKey] = strings.Join(dnsAliases, ",")
+			} else {
+				svc.RemoveAnnotation(service.AnnotationCNAMEsKey)
+			}
+			svc.AddAnnotation(dnsAnnotations)
 		}
 	}
 

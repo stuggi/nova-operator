@@ -399,7 +399,7 @@ var _ = Describe("NovaCell controller", func() {
 			Eventually(func(g Gomega) {
 				novaCell := GetNovaCell(cell1.CellCRName)
 				novaCell.Spec.NoVNCProxyServiceTemplate.Override.Service = &service.RoutedOverrideSpec{
-					EndpointURL: ptr.To("http://foo"),
+					EndpointURL: ptr.To("http://foo.example.test"),
 				}
 
 				g.Expect(k8sClient.Update(ctx, novaCell)).To(Succeed())
@@ -429,7 +429,7 @@ var _ = Describe("NovaCell controller", func() {
 			configData := string(computeConfigData.Data["01-nova.conf"])
 			Expect(configData).To(ContainSubstring("transport_url=rabbit://cell1/fake"))
 			Expect(configData).To(ContainSubstring("username = nova\npassword = service-password\n"))
-			vncURLConfig := "novncproxy_base_url = http://foo/vnc_lite.html"
+			vncURLConfig := "novncproxy_base_url = http://foo.example.test/vnc_lite.html"
 			Expect(configData).To(ContainSubstring(vncURLConfig))
 			Expect(configData).To(ContainSubstring("[vnc]\nenabled = True"))
 
